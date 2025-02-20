@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>D&D Dice Roller</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>D&D Dice Roller</h1>
+    <div class="dice-controls">
+      <div class="dice">
+        <h2>d4</h2>
+        <input type="number" id="d4-count" value="1" min="1">
+        <button onclick="rollDice(4, 'd4')">Roll d4</button>
+      </div>
+      <div class="dice">
+        <h2>d6</h2>
+        <input type="number" id="d6-count" value="1" min="1">
+        <button onclick="rollDice(6, 'd6')">Roll d6</button>
+      </div>
+      <div class="dice">
+        <h2>d8</h2>
+        <input type="number" id="d8-count" value="1" min="1">
+        <button onclick="rollDice(8, 'd8')">Roll d8</button>
+      </div>
+      <div class="dice">
+        <h2>d12</h2>
+        <input type="number" id="d12-count" value="1" min="1">
+        <button onclick="rollDice(12, 'd12')">Roll d12</button>
+      </div>
+      <div class="dice">
+        <h2>d20</h2>
+        <input type="number" id="d20-count" value="1" min="1">
+        <button onclick="rollDice(20, 'd20')">Roll d20</button>
+      </div>
+    </div>
+    <div class="results">
+      <h2>Results:</h2>
+      <div id="results-display"></div>
+    </div>
+    <button id="reset-button" onclick="resetResults()">Reset</button>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
