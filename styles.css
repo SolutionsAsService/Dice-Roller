@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Open+Sans:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=EB+Garamond:wght@400;600&display=swap');
 
-/* === Body and Overall Page === */
+/* === Body === */
 body {
-  font-family: 'Open Sans', sans-serif;
+  font-family: 'EB Garamond', serif;
   background-color: #1a1a1a;
   margin: 0;
   padding: 20px;
@@ -17,12 +17,11 @@ body {
 .container {
   max-width: 900px;
   margin: 0 auto;
-  background: url('https://www.transparenttextures.com/patterns/paper-fibers.png') repeat, #f5f0e6;
+  background: url('https://www.transparenttextures.com/patterns/paper-fibers.png') repeat, #f8f3ea;
   padding: 35px;
   border-radius: 14px;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
   border: 4px solid #7a5744;
-  background-blend-mode: overlay;
   position: relative;
 }
 
@@ -47,16 +46,17 @@ header {
 }
 
 header h1 {
-  font-family: 'Uncial Antiqua', cursive;
+  font-family: 'MedievalSharp', cursive;
   font-size: 3.5em;
   color: #7a5744;
-  text-shadow: 3px 3px 6px #000;
+  text-shadow: 2px 2px 5px #000;
   margin: 0;
   letter-spacing: 2px;
 }
 
 header p {
   font-size: 1.2em;
+  font-family: 'EB Garamond', serif;
   color: #5a4634;
   margin-top: 8px;
 }
@@ -83,22 +83,25 @@ header p {
 /* === Dice Inputs === */
 .dice input {
   width: 70px;
-  font-size: 1.2em;
+  font-size: 1.4em;
   text-align: center;
   margin-top: 10px;
   padding: 6px;
   border-radius: 6px;
-  border: 1px solid #7a5744;
-  background-color: #fff;
-  font-family: 'Open Sans', sans-serif;
+  border: 2px solid #5c4033;
+  background-color: #ffffff;
+  color: #2c1d0f;
+  font-weight: bold;
+  font-family: 'EB Garamond', serif;
 }
 
 /* === Roll Button === */
 .roll-button {
   display: inline-block;
   padding: 14px 28px;
-  font-size: 1.2em;
+  font-size: 1.3em;
   font-weight: 600;
+  font-family: 'MedievalSharp', cursive;
   color: #f8f3e5;
   background: linear-gradient(to bottom, #6c4b2d, #3e2917);
   border: 2px solid #7a5744;
@@ -127,6 +130,7 @@ header p {
   margin: 35px auto 10px auto;
   padding: 16px 34px;
   font-size: 1.2em;
+  font-family: 'MedievalSharp', cursive;
   font-weight: bold;
   color: #fff;
   background: radial-gradient(circle, #8b0000, #360101);
@@ -158,14 +162,15 @@ header p {
   border-radius: 10px;
   background-color: #fffaf3;
   box-shadow: 3px 3px 8px rgba(0,0,0,0.35);
-  font-size: 1.2em;
+  font-size: 1.25em;
+  font-family: 'EB Garamond', serif;
   color: #3f2e1c;
 }
 
 #results-display {
   min-height: 60px;
   padding: 10px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 /* === Footer === */
@@ -176,4 +181,5 @@ footer {
   color: #7a5744;
   font-size: 1em;
   padding-bottom: 20px;
+  font-family: 'EB Garamond', serif;
 }
