@@ -1,27 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=EB+Garamond:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cormorant+Garamond:wght@400;600&display=swap');
 
 /* === Body === */
 body {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Cormorant Garamond', serif;
   background-color: #1a1a1a;
   margin: 0;
   padding: 20px;
-  background-image: linear-gradient(rgba(10, 10, 10, 0.95), rgba(10, 10, 10, 0.95)),
+  background-image: linear-gradient(rgba(10, 10, 10, 0.97), rgba(10, 10, 10, 0.97)),
     url('https://www.transparenttextures.com/patterns/dark-denim-3.png');
   background-size: auto;
   background-attachment: fixed;
-  color: #e9dbc6;
+  color: #e8ddc9;
 }
 
 /* === Main Container === */
 .container {
   max-width: 900px;
   margin: 0 auto;
-  background: url('https://www.transparenttextures.com/patterns/paper-fibers.png') repeat, #f8f3ea;
-  padding: 35px;
-  border-radius: 14px;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
-  border: 4px solid #7a5744;
+  background: url('https://www.transparenttextures.com/patterns/paper-fibers.png') repeat, #f3eee4;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 0 45px rgba(0, 0, 0, 0.75);
+  border: 5px solid #7a5744;
   position: relative;
 }
 
@@ -33,9 +33,9 @@ body {
   left: 0;
   right: 0;
   height: 15px;
-  background: radial-gradient(circle, #00000088 0%, transparent 80%);
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
+  background: radial-gradient(circle, #000000aa 0%, transparent 80%);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
   z-index: 1;
 }
 
@@ -46,19 +46,19 @@ header {
 }
 
 header h1 {
-  font-family: 'MedievalSharp', cursive;
-  font-size: 3.5em;
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 3.8em;
   color: #7a5744;
-  text-shadow: 2px 2px 5px #000;
+  text-shadow: 3px 3px 7px #000;
   margin: 0;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
 }
 
 header p {
-  font-size: 1.2em;
-  font-family: 'EB Garamond', serif;
+  font-size: 1.25em;
   color: #5a4634;
-  margin-top: 8px;
+  margin-top: 10px;
+  font-family: 'Cormorant Garamond', serif;
 }
 
 /* === Dice Controls Layout === */
@@ -73,55 +73,54 @@ header p {
 .dice {
   flex: 1 1 200px;
   text-align: center;
-  background: linear-gradient(145deg, #ede4d4, #fdf9f2);
+  background: linear-gradient(145deg, #f4ece1, #fffaf2);
   border: 2px solid #7a5744;
   border-radius: 12px;
   padding: 18px;
-  box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
+  box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
 }
 
 /* === Dice Inputs === */
 .dice input {
   width: 70px;
-  font-size: 1.4em;
+  font-size: 1.5em;
   text-align: center;
-  margin-top: 10px;
+  margin-top: 12px;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 2px solid #5c4033;
-  background-color: #ffffff;
-  color: #2c1d0f;
+  background-color: #fff;
+  color: #2a170b; /* DARKER TEXT FOR CLARITY */
   font-weight: bold;
-  font-family: 'EB Garamond', serif;
+  font-family: 'Cormorant Garamond', serif;
 }
 
 /* === Roll Button === */
 .roll-button {
   display: inline-block;
-  padding: 14px 28px;
+  padding: 14px 30px;
   font-size: 1.3em;
-  font-weight: 600;
-  font-family: 'MedievalSharp', cursive;
+  font-family: 'Cinzel Decorative', cursive;
   color: #f8f3e5;
   background: linear-gradient(to bottom, #6c4b2d, #3e2917);
   border: 2px solid #7a5744;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 2px;
-  box-shadow: 3px 3px 10px rgba(0,0,0,0.6);
+  box-shadow: 3px 3px 12px rgba(0,0,0,0.6);
   transition: all 0.3s ease-in-out;
 }
 
 .roll-button:hover {
   background: linear-gradient(to bottom, #7a5744, #4a2f1f);
-  box-shadow: 0 0 15px rgba(255, 215, 100, 0.9);
+  box-shadow: 0 0 18px rgba(255, 215, 100, 0.95);
   transform: scale(1.05);
 }
 
 .roll-button:active {
-  transform: scale(0.95);
-  box-shadow: inset 2px 2px 8px rgba(0,0,0,0.5);
+  transform: scale(0.94);
+  box-shadow: inset 3px 3px 10px rgba(0,0,0,0.5);
 }
 
 /* === Reset Button === */
@@ -130,7 +129,7 @@ header p {
   margin: 35px auto 10px auto;
   padding: 16px 34px;
   font-size: 1.2em;
-  font-family: 'MedievalSharp', cursive;
+  font-family: 'Cinzel Decorative', cursive;
   font-weight: bold;
   color: #fff;
   background: radial-gradient(circle, #8b0000, #360101);
@@ -138,14 +137,14 @@ header p {
   border-radius: 14px;
   cursor: pointer;
   letter-spacing: 2px;
-  box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.75);
+  box-shadow: 4px 4px 14px rgba(0, 0, 0, 0.75);
   transition: all 0.3s ease-in-out;
   text-transform: uppercase;
 }
 
 #reset-button:hover {
   background: radial-gradient(circle, #aa0000, #520202);
-  box-shadow: 0 0 18px rgba(255, 69, 0, 0.95);
+  box-shadow: 0 0 20px rgba(255, 69, 0, 0.95);
   transform: scale(1.1);
 }
 
@@ -157,14 +156,14 @@ header p {
 /* === Results Section === */
 .results {
   margin: 30px 0;
-  padding: 22px;
+  padding: 24px;
   border: 2px solid #7a5744;
-  border-radius: 10px;
+  border-radius: 12px;
   background-color: #fffaf3;
-  box-shadow: 3px 3px 8px rgba(0,0,0,0.35);
-  font-size: 1.25em;
-  font-family: 'EB Garamond', serif;
+  box-shadow: 3px 3px 10px rgba(0,0,0,0.4);
+  font-size: 1.3em;
   color: #3f2e1c;
+  font-family: 'Cormorant Garamond', serif;
 }
 
 #results-display {
@@ -181,5 +180,5 @@ footer {
   color: #7a5744;
   font-size: 1em;
   padding-bottom: 20px;
-  font-family: 'EB Garamond', serif;
+  font-family: 'Cormorant Garamond', serif;
 }
