@@ -187,7 +187,7 @@ async function runPhase(chromium, base, PHASE) {
     await setControl('#die-body', '#224466');
     await setControl('#die-body2', '#88aacc');
     await setControl('#die-ink', '#ffee00');
-    await setControl('#die-pattern', 'marbled');
+    await setControl('#die-pattern', 'marble');
     await setControl('#die-finish', 'glass');
     await setControl('#die-font', await page.$eval('#die-font option:last-child', (o) => o.value));
     await setControl('#die-edge-on', true);
@@ -213,7 +213,8 @@ async function runPhase(chromium, base, PHASE) {
     }
     // copy to one other die
     await page.selectOption('#die-copy-target', 'pick');
-    await page.check('#die-copy-list input >> nth=0');
+    const id1 = await slotId(6, 1);
+    await page.check('#die-copy-list input[value="' + id1 + '"]');
     await page.click('#die-copy');
     check(/Copied this look to 1 die/.test(await q('#die-status', (n) => n.textContent)), 'copy look to a chosen die');
     await page.keyboard.press('Escape');
@@ -222,11 +223,11 @@ async function runPhase(chromium, base, PHASE) {
     const d2 = data.players[0].bag[6].find((d) => d.id === id2);
     const st = d2.style || {};
     check(d2.name === 'Sparky', 'rename saved');
-    check(st.body === '#224466' && st.body2 === '#88aacc' && st.ink === '#ffee00' && st.pattern === 'marbled' && st.finish === 'glass' &&
+    check(st.body === '#224466' && st.body2 === '#88aacc' && st.ink === '#ffee00' && st.pattern === 'marble' && st.finish === 'glass' &&
       st.edge === '#000000' && st.opacity === 0.8 && st.glow === 0.5 && st.glowColor === '#00ffcc' && st.pips === false &&
       st.inlay === 'text' && st.inlayText === 'AB', 'every editor option saved on that one die ' + JSON.stringify(st));
     const others = data.players[0].bag[6].filter((d) => d.id !== id2);
-    check(others.filter((d) => d.style && d.style.body === '#224466').length === 1, 'other d6s keep their own look (only the copied one changed)');
+    check(others.filter((d) => d.style && d.style.body === '#224466').length === 1 && (others.find((d) => d.id === id1).style || {}).body === '#224466', 'other d6s keep their own look (only the copied one changed)');
     check(/Sparky/.test(await q('.bag-group[data-sides="6"] .bag-item:nth-child(2) .bag-name', (n) => n.textContent)), 'bag shows the new name in slot #2');
 
     // ---- picker: "Use" sends a die in first and puts it on the table

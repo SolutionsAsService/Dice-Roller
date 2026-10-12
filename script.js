@@ -1742,7 +1742,9 @@
     el.dieCopyPick.hidden = !pick;
     if (!pick) return;
     const checked = new Set(Array.from(el.dieCopyList.querySelectorAll('input:checked')).map((i) => i.value));
-    const others = Profiles.allDice(t.p).filter((d) => d.id !== t.die.id);
+    // Same-type dice first: those are the ones easiest to mix up.
+    const all = Profiles.allDice(t.p).filter((d) => d.id !== t.die.id);
+    const others = all.filter((d) => d.sides === t.f.sides).concat(all.filter((d) => d.sides !== t.f.sides));
     el.dieCopyList.innerHTML = others.map((d, k) => {
       const at = Profiles.findDie(t.p, d.id);
       return '<label class="copy-opt" for="copy-opt-' + k + '"><input type="checkbox" id="copy-opt-' + k + '" value="' + escapeHtml(d.id) + '"' +
