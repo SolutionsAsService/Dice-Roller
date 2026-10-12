@@ -114,10 +114,13 @@
           </div>
         </div>
 
+        <div class="lineup" id="lineup" hidden></div>
+
         <div class="result-card" id="result-card" data-state="idle">
           <div class="result-head">
             <span class="result-label" id="result-label">Result</span>
             <span class="result-notation" id="result-notation"></span>
+            <label class="tags-toggle small" for="show-tags"><input type="checkbox" id="show-tags"> Name tags in tray</label>
           </div>
           <div class="result-main">
             <output class="total" id="total" aria-labelledby="result-label">—</output>
@@ -219,7 +222,7 @@
             <h2 id="bag-title" class="panel-title">Dice bag</h2>
             <span class="muted small" id="bag-owner"></span>
           </div>
-          <p class="muted small bag-intro">Every die you roll keeps score. Mark one as lucky to see if it really is &ndash; or burn a traitor and get a fresh one.</p>
+          <p class="muted small bag-intro">Keep up to 20 of each die, each in its own numbered slot with its own name, look and stats. Dice roll in slot order unless you press <strong>Use</strong> to send particular dice first; roll more than you own and grey house dice fill in. <strong>✎</strong> renames and restyles a die, <strong>★</strong> marks your lucky die, and the flame burns a traitor.</p>
           <ul class="bag" id="bag-list"></ul>
           <p class="hint" id="bag-status" role="status" aria-live="polite"></p>
         </section>
@@ -259,6 +262,112 @@
       <div class="dialog-actions">
         <button type="submit" value="cancel" class="btn btn-ghost" id="burn-cancel">Spare it</button>
         <button type="submit" value="burn" class="btn btn-burn" id="burn-confirm"><svg class="icon-flame" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.2 2c.9 3.4-1.6 5-1.6 7.6 0 1.2.8 2.1 1.9 2.1 1.4 0 2.1-1.3 1.7-3.1 2.7 1.8 4.1 4.4 4.1 7.1A6.3 6.3 0 0 1 12 22a6.2 6.2 0 0 1-6.3-6.2c0-2.7 1.4-4.8 3.1-6.3.4-2.9 1.9-5.4 3.4-7.5z"/></svg> Burn it</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="die-dialog" class="dialog die-dialog" aria-labelledby="die-title" aria-describedby="die-sub">
+    <form method="dialog" id="die-form" class="die-form" autocomplete="off">
+      <div class="die-head">
+        <div>
+          <h2 id="die-title" class="dialog-title">Customise die</h2>
+          <p id="die-sub" class="muted small"></p>
+        </div>
+        <button type="submit" value="done" class="icon-btn die-close" aria-label="Close the die editor">&times;</button>
+      </div>
+
+      <div class="die-layout">
+        <div class="die-stage">
+          <div class="die-preview-wrap" id="die-preview-wrap">
+            <div class="die-preview-flat" id="die-preview-flat" aria-hidden="true"></div>
+          </div>
+          <p class="muted small die-preview-hint" id="die-preview-hint">Drag the die (or focus it and use the arrow keys) to turn it.</p>
+          <div class="die-warnings" id="die-warnings" role="status" aria-live="polite"></div>
+        </div>
+
+        <div class="die-controls">
+          <div class="field">
+            <label for="die-name">Name</label>
+            <input type="text" id="die-name" maxlength="48" spellcheck="false" enterkeyhint="done">
+          </div>
+          <div class="die-slot-row">
+            <span class="small" id="die-slot"></span>
+            <span class="die-slot-actions">
+              <button type="button" class="btn btn-ghost btn-small" id="die-move-up">&uarr; Earlier slot</button>
+              <button type="button" class="btn btn-ghost btn-small" id="die-move-down">&darr; Later slot</button>
+              <button type="button" class="btn btn-ghost btn-small btn-danger" id="die-remove">Remove from bag</button>
+            </span>
+          </div>
+
+          <fieldset class="die-fieldset">
+            <legend>Quick looks</legend>
+            <div class="die-presets" id="die-presets"></div>
+            <div class="die-quick-actions">
+              <button type="button" class="btn btn-ghost btn-small" id="die-random"><span aria-hidden="true">&#127922;</span> Randomise</button>
+              <button type="button" class="btn btn-ghost btn-small" id="die-reset">Use my player look</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="die-fieldset">
+            <legend>Colours</legend>
+            <div class="die-grid die-colours">
+              <div class="field"><label for="die-body">Body</label><input type="color" id="die-body"></div>
+              <div class="field"><label for="die-body2">Second colour</label><input type="color" id="die-body2"></div>
+              <div class="field"><label for="die-ink">Numbers</label><input type="color" id="die-ink"></div>
+              <div class="field"><label for="die-glow-color">Glow</label><input type="color" id="die-glow-color"></div>
+              <div class="field field-edge">
+                <span class="field-check"><input type="checkbox" id="die-edge-on"><label for="die-edge-on">Edge outline</label></span>
+                <input type="color" id="die-edge" aria-label="Edge outline colour">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="die-fieldset">
+            <legend>Style</legend>
+            <div class="die-grid">
+              <div class="field"><label for="die-pattern">Pattern</label><select id="die-pattern"></select></div>
+              <div class="field"><label for="die-finish">Finish</label><select id="die-finish"></select></div>
+              <div class="field"><label for="die-font">Numbers font</label><select id="die-font"></select></div>
+              <div class="field"><label for="die-inlay">Inlay on the top face</label><select id="die-inlay"></select></div>
+              <div class="field" id="die-inlay-text-field" hidden>
+                <label for="die-inlay-text">Your symbol (up to 3 characters)</label>
+                <input type="text" id="die-inlay-text" maxlength="12" spellcheck="false">
+              </div>
+              <div class="field">
+                <label for="die-opacity">Opacity <output id="die-opacity-out" for="die-opacity"></output></label>
+                <input type="range" id="die-opacity" min="0.35" max="1" step="0.05">
+              </div>
+              <div class="field">
+                <label for="die-glow">Glow strength <output id="die-glow-out" for="die-glow"></output></label>
+                <input type="range" id="die-glow" min="0" max="1" step="0.05">
+              </div>
+              <div class="field field-check" id="die-pips-field">
+                <input type="checkbox" id="die-pips"><label for="die-pips">Pips instead of numbers</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="die-fieldset" id="die-copy-fields">
+            <legend>Copy this look</legend>
+            <div class="die-copy-row">
+              <label for="die-copy-target" class="visually-hidden">Copy to</label>
+              <select id="die-copy-target">
+                <option value="type">The rest of this die type</option>
+                <option value="all">Every die in my bag</option>
+                <option value="pick">Dice I choose&hellip;</option>
+              </select>
+              <button type="button" class="btn btn-ghost btn-small" id="die-copy">Copy look</button>
+            </div>
+            <div class="die-copy-pick" id="die-copy-pick" hidden>
+              <div class="die-copy-list" id="die-copy-list" role="group" aria-label="Dice to copy the look to"></div>
+            </div>
+          </fieldset>
+          <p class="hint" id="die-status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="submit" value="done" class="btn">Done</button>
       </div>
     </form>
   </dialog>
