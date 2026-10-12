@@ -102,6 +102,19 @@ test('normalizeData repairs bad fields instead of crashing', () => {
   assert.equal(dup.name, 'Dup <b>', 'names are stored as text (escaped at render time)');
 });
 
+test('every generated die name survives a save/load round trip intact', () => {
+  for (const first of P.FIRST_NAMES) {
+    for (const epithet of P.EPITHETS) {
+      const name = first + ' ' + epithet;
+      assert.ok(name.length <= P.MAX_DIE_NAME, name);
+      const p = P.newPlayer('A', OPTS());
+      p.dice[20].name = name;
+      const back = P.parse(P.serialize({ version: 1, activeId: p.id, players: [p] })).data.players[0];
+      assert.equal(back.dice[20].name, name);
+    }
+  }
+});
+
 test('names, colours and epitaphs are sanitised', () => {
   assert.equal(P.sanitizeName('  Zed\n\tthe   Great  '), 'Zed the Great');
   assert.equal(P.sanitizeName('x'.repeat(100)).length, P.MAX_NAME);

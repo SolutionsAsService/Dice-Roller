@@ -42,7 +42,8 @@
   const BACKUP_KEY = 'diceBox.profiles.backup';
   const TRACKED = Object.freeze([4, 6, 8, 10, 12, 20, 100]);
   const MAX_PLAYERS = 12;
-  const MAX_NAME = 24;
+  const MAX_NAME = 24; // player names
+  const MAX_DIE_NAME = 48; // generated die names ("Lady Fortuna the Reliable(ish)") and renamed dice
   const MAX_EPITAPH = 140;
   const MAX_GRAVEYARD = 40;
   const MAX_RECENT = 20;
@@ -106,9 +107,9 @@
     return prefix + '_' + nowOf(opts).toString(36) + s;
   }
 
-  function sanitizeName(name, fallback) {
+  function sanitizeName(name, fallback, max) {
     const s = typeof name === 'string' ? name.replace(/\s+/g, ' ').replace(CONTROL_CHARS, '').trim() : '';
-    return (s || fallback || 'Adventurer').slice(0, MAX_NAME);
+    return (s || fallback || 'Adventurer').slice(0, max || MAX_NAME);
   }
 
   function sanitizeText(text, max) {
@@ -140,7 +141,7 @@
     return {
       id: makeId('die', opts),
       sides,
-      name: (opts && opts.name) ? sanitizeName(opts.name) : dieName(opts),
+      name: (opts && opts.name) ? sanitizeName(opts.name, null, MAX_DIE_NAME) : dieName(opts),
       born: nowOf(opts),
       lucky: false,
       faces: new Array(sides).fill(0),
@@ -166,7 +167,7 @@
     const die = {
       id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 64) : makeId('die', opts),
       sides: s,
-      name: sanitizeName(raw.name, dieName(opts)),
+      name: sanitizeName(raw.name, dieName(opts), MAX_DIE_NAME),
       born: finiteTime(raw.born, nowOf(opts)),
       lucky: raw.lucky === true,
       faces,
@@ -646,6 +647,9 @@
     TRACKED,
     MAX_PLAYERS,
     MAX_NAME,
+    MAX_DIE_NAME,
+    FIRST_NAMES,
+    EPITHETS,
     MAX_EPITAPH,
     MAX_GRAVEYARD,
     MIN_SAMPLE,
