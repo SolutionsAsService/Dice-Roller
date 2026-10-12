@@ -1389,9 +1389,22 @@
     const f = Profiles.findDie(p, id);
     if (!f) return;
     const pos = Profiles.toggleHand(p, id);
+    // Picking a die you aren't rolling yet puts it on the table too (rack
+    // selections only; a typed formula with keep/drop is left alone).
+    let added = false;
+    if (pos >= 0 && !state.custom && !state.rolling && state.pool[f.sides] < pos + 1) {
+      const total = DICE.reduce((n, s) => n + state.pool[s], 0);
+      const want = Math.min(MAX_PER_DIE, pos + 1);
+      if (total + (want - state.pool[f.sides]) <= Core.LIMITS.maxTotalDice) {
+        state.pool[f.sides] = want;
+        added = true;
+        selectionChanged();
+      }
+    }
     bagChanged(bagFocus('data-pick', id));
     bagSay(pos >= 0
-      ? f.die.name + ' (' + slotName(f.sides, f.index) + ') rolls ' + ordinal(pos + 1) + ' whenever you roll a d' + f.sides + '.'
+      ? f.die.name + ' (' + slotName(f.sides, f.index) + ') rolls ' + ordinal(pos + 1) + ' whenever you roll a d' + f.sides +
+        (added ? '; it\u2019s on the table now (' + state.pool[f.sides] + 'd' + f.sides + ').' : '.')
       : f.die.name + ' goes back to the normal slot order.');
   }
 
