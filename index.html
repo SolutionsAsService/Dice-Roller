@@ -10,7 +10,18 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='32,3 58,18 58,46 32,61 6,46 6,18' fill='%23b3262f' stroke='%23f0d48a' stroke-width='3'/%3E%3Cpolygon points='32,14 49,42 15,42' fill='none' stroke='%23f0d48a' stroke-width='2'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
   <script src="dice-core.js" defer></script>
+  <script src="dice-geometry.js" defer></script>
+  <script src="dice-physics.js" defer></script>
   <script src="script.js" defer></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.min.js",
+        "three/addons/": "./vendor/three/addons/"
+      }
+    }
+  </script>
+  <script type="module" src="tray3d.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#roll-btn">Skip to the Roll button</a>

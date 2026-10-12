@@ -377,6 +377,7 @@
     if (state.lastResult && notation === state.lastNotation && el.tray.dataset.state === 'result') return;
     el.trayPreview.innerHTML = '';
     el.trayDice.innerHTML = '';
+    clear3d();
     el.trayMore.hidden = true;
     if (!parsed.terms.length) {
       el.tray.dataset.state = 'empty';
@@ -460,7 +461,53 @@
     die.classList.toggle('is-max', d.kept && d.value === d.sides && !d.crit);
   }
 
+  // The 3D tray (tray3d.js, an ES module using three.js) registers window.DiceTray3D.
+  // If WebGL or the module is unavailable, the CSS tray below is used instead.
+  function tray3d() {
+    const t = window.DiceTray3D;
+    try {
+      return t && t.available() ? t : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clear3d() {
+    if (window.DiceTray3D) window.DiceTray3D.clear();
+  }
+
   function animateRoll(result) {
+    const t3d = tray3d();
+    if (!t3d) return animateRollCss(result);
+    const dice = flattenDice(result);
+    const visual = dice.slice(0, MAX_VISUAL_DICE).map((d) => Object.assign({}, d, {
+      max: d.kept && d.value === d.sides && !d.crit,
+    }));
+    const extra = dice.length - visual.length;
+    const reduced = reducedMotion.matches;
+
+    el.trayPreview.innerHTML = '';
+    el.trayDice.innerHTML = '';
+    el.tray.dataset.state = 'result';
+    el.trayMore.hidden = extra <= 0;
+    if (extra > 0) el.trayMore.textContent = '+' + extra + ' more in the results';
+
+    if (!reduced) {
+      el.box.classList.remove('is-shaking');
+      void el.box.offsetWidth;
+      el.box.classList.add('is-shaking');
+    }
+    return t3d.roll(visual, { reduced }).then(
+      () => { el.box.classList.remove('is-shaking'); },
+      () => {
+        clear3d();
+        return animateRollCss(result);
+      },
+    );
+  }
+
+  function animateRollCss(result) {
+    clear3d();
     const dice = flattenDice(result);
     const visual = dice.slice(0, MAX_VISUAL_DICE);
     const extra = dice.length - visual.length;

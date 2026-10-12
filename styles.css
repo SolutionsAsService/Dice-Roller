@@ -481,8 +481,26 @@ h1 {
   inset: 0;
 }
 
+/* 3D tray (tray3d.js) – a WebGL canvas filling the tray */
+.tray-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tray-canvas[hidden] {
+  display: none;
+}
+
+.tray.is-3d {
+  outline-color: transparent;
+}
+
 .tray-more {
   position: absolute;
+  z-index: 1;
   right: 16px;
   bottom: 12px;
   margin: 0;
