@@ -6,7 +6,7 @@
 //
 //   PLAYWRIGHT_DIR=/path/to/project-with-playwright node tests/browser/bag.e2e.mjs
 //
-// Options (env): PHASES=desktop,phone,reduced  OUT=<screenshot dir>
+// Options (env): PHASES=desktop,phone,reduced  OUT=<screenshot dir>  NO3D=1
 // The script serves the repo itself on a free localhost port, runs each phase
 // in a fresh browser context (one Chromium at a time), and exits non-zero on
 // any failed check or console error/warning.
@@ -71,7 +71,10 @@ async function runPhase(chromium, base, PHASE) {
   const log = (...a) => console.log('[' + PHASE + ' ' + ((Date.now() - t0) / 1000).toFixed(0) + 's]', ...a);
   const check = (ok, what) => { if (!ok) problems.push(what); log((ok ? 'ok   ' : 'FAIL ') + what); };
 
-  const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  // NO3D=1 turns WebGL off (the app falls back to the flat tray); useful where
+  // software GL crashes the headless browser.
+  const args = process.env.NO3D ? ['--disable-webgl', '--disable-3d-apis'] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
+  const browser = await chromium.launch({ args });
   const ctxOpts = PHASE === 'phone'
     ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
     : { viewport: { width: 1400, height: 950 } };
@@ -82,6 +85,8 @@ async function runPhase(chromium, base, PHASE) {
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') problems.push('console ' + m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => problems.push('pageerror: ' + e.message));
   page.on('dialog', (d) => d.accept());
+  page.on('crash', () => problems.push('page crashed (renderer died)'));
+  browser.on('disconnected', () => log('browser disconnected'));
 
   const shot = (name, full) => page.screenshot({ path: path.join(OUT, PHASE + '-' + name + '.png'), fullPage: !!full });
   const q = (sel, fn) => page.$eval(sel, fn);
