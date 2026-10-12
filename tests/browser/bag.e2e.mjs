@@ -82,7 +82,8 @@ async function runPhase(chromium, base, PHASE) {
   const ctx = await browser.newContext(ctxOpts);
   const page = await ctx.newPage();
   page.setDefaultTimeout(60000);
-  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') problems.push('console ' + m.type() + ': ' + m.text()); });
+  const expected = (t) => !!process.env.NO3D && /WebGL|3D dice tray unavailable/.test(t);
+  page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !expected(m.text())) problems.push('console ' + m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => problems.push('pageerror: ' + e.message));
   page.on('dialog', (d) => d.accept());
   page.on('crash', () => problems.push('page crashed (renderer died)'));
