@@ -1493,6 +1493,717 @@ h1 {
   color: var(--muted);
 }
 
+/* ------------------------------------------------------- players & looks */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.player-chip-btn {
+  max-width: 14rem;
+}
+
+.player-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.swatch {
+  --sw-a: #f06a5f;
+  --sw-b: #7a1220;
+  --sw-ink: #fff;
+  position: relative;
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 30%;
+  background: linear-gradient(150deg, var(--sw-a), var(--sw-b));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.swatch::after {
+  content: "";
+  position: absolute;
+  inset: 34%;
+  border-radius: 50%;
+  background: var(--sw-ink);
+}
+
+.swatch-classic {
+  background: conic-gradient(#5fd39b, #6d9cf0, #b98cf0, #f06a5f, #f3b955, #5fd39b);
+}
+
+.swatch-classic::after {
+  background: #fff;
+}
+
+/* Custom player look recolours every CSS die (rack, previews, fallback tray). */
+[data-look="custom"] .die {
+  --die-a: var(--look-a);
+  --die-b: var(--look-b);
+  --ink: var(--look-ink);
+  --ink-shadow: var(--look-ink-shadow);
+}
+
+[data-look="custom"] .die-face.pips .pip {
+  background: radial-gradient(circle at 40% 35%, var(--look-ink), color-mix(in srgb, var(--look-ink) 60%, #000));
+}
+
+[data-finish="metal"] .die-body {
+  background:
+    linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.4) 45%, transparent 60%),
+    linear-gradient(150deg, var(--die-a), var(--die-b));
+}
+
+[data-finish="matte"] .die-body {
+  background: linear-gradient(150deg, var(--die-a), var(--die-b));
+}
+
+[data-finish="pearl"] .die-body {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.55), transparent 45%),
+    linear-gradient(200deg, rgba(160, 255, 240, 0.25), rgba(255, 170, 230, 0.25)),
+    linear-gradient(150deg, var(--die-a), var(--die-b));
+}
+
+[data-finish="gem"] .die-body {
+  opacity: 0.88;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.75), transparent 30%),
+    linear-gradient(150deg, var(--die-a), var(--die-b));
+}
+
+.player-switch {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.player-list input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.player-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 0.3rem 0.75rem 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.player-opt:hover {
+  border-color: var(--gold);
+}
+
+.player-opt-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-list input:checked + .player-opt {
+  border-color: var(--gold-hi);
+  background: rgba(217, 178, 95, 0.16);
+  color: var(--gold-hi);
+  font-weight: 700;
+  box-shadow: 0 0 0 1px rgba(240, 212, 138, 0.35);
+}
+
+.player-list input:focus-visible + .player-opt {
+  outline: 3px solid var(--gold-hi);
+  outline-offset: 2px;
+}
+
+.player-editor,
+.backup {
+  margin-top: 0.8rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.6rem;
+}
+
+.player-editor summary,
+.backup summary {
+  cursor: pointer;
+  color: var(--gold);
+  font-weight: 600;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.player-form {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.6rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.field input[type="text"],
+.field select,
+.dialog textarea {
+  min-height: 40px;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font: inherit;
+}
+
+.field select option {
+  background: var(--panel);
+}
+
+.field input[type="color"] {
+  width: 4.2rem;
+  height: 40px;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.look-preview {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 40%, var(--felt-hi), var(--felt-lo));
+}
+
+.look-preview .die {
+  --size: 46px;
+}
+
+.editor-actions,
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.btn-danger {
+  color: #ffb3a6;
+  border-color: rgba(226, 85, 63, 0.5);
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--fumble);
+  box-shadow: 0 0 14px rgba(226, 85, 63, 0.25);
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+/* ------------------------------------------------------------- lucky die */
+.rack-lucky {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  display: none;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: #ffe08a;
+  text-shadow: 0 0 8px rgba(184, 240, 122, 0.9);
+}
+
+.rack-item.is-lucky .rack-lucky {
+  display: block;
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+
+.rack-item.is-lucky .rack-die .die {
+  filter: drop-shadow(0 0 6px rgba(184, 240, 122, 0.75)) drop-shadow(0 4px 4px rgba(0, 0, 0, 0.5));
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.55; transform: scale(0.85) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.15) rotate(20deg); }
+}
+
+.die.is-lucky::after {
+  content: "★";
+  position: absolute;
+  top: -12%;
+  right: -10%;
+  font-size: calc(var(--size) * 0.32);
+  line-height: 1;
+  color: #ffe08a;
+  text-shadow: 0 0 6px rgba(184, 240, 122, 0.9);
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+
+.chip.lucky {
+  position: relative;
+}
+
+.chip.lucky::after {
+  content: "★";
+  position: absolute;
+  top: -0.55em;
+  right: -0.4em;
+  font-size: 0.7em;
+  color: #ffe08a;
+  text-shadow: 0 0 4px rgba(184, 240, 122, 0.8);
+}
+
+.banner-lucky {
+  color: #16300a;
+  background: linear-gradient(180deg, #d9f7a6, #8fcf4f);
+  box-shadow: 0 0 16px rgba(184, 240, 122, 0.4);
+}
+
+.banner-lucky.is-sus {
+  color: #e9f5d8;
+  background: linear-gradient(180deg, #55704a, #2e3f27);
+  box-shadow: none;
+}
+
+.tag-player {
+  margin-left: 0.3rem;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.lucky-badge {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: rgba(184, 240, 122, 0.16);
+  border: 1px solid rgba(184, 240, 122, 0.5);
+  color: #d9f7a6;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.lucky-badge.is-ex {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- dice bag */
+.bag-intro {
+  margin: 0 0 0.6rem;
+}
+
+.bag,
+.shame {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bag-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.bag-item.is-lucky {
+  border-color: rgba(184, 240, 122, 0.55);
+  background: linear-gradient(90deg, rgba(184, 240, 122, 0.1), rgba(0, 0, 0, 0.2) 60%);
+}
+
+.bag-icon .die {
+  --size: 34px;
+}
+
+.bag-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.bag-name,
+.tomb-head {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bag-type {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--gold);
+}
+
+.bag-stats {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.verdict {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0 0.45rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--muted);
+}
+
+.verdict-blessed,
+.verdict-warm {
+  background: rgba(184, 240, 122, 0.16);
+  color: #d9f7a6;
+}
+
+.verdict-fair {
+  background: rgba(109, 156, 240, 0.16);
+  color: #c4d7ff;
+}
+
+.verdict-cold,
+.verdict-cursed {
+  background: rgba(226, 85, 63, 0.18);
+  color: #ffb3a6;
+}
+
+.bag-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--muted);
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.lucky-btn[aria-pressed="true"] {
+  border-color: rgba(184, 240, 122, 0.7);
+  background: rgba(184, 240, 122, 0.18);
+  color: #ffe08a;
+  text-shadow: 0 0 8px rgba(184, 240, 122, 0.9);
+}
+
+.icon-flame {
+  width: 1.15em;
+  height: 1.15em;
+  fill: currentColor;
+}
+
+.burn-btn {
+  color: #ff9a4a;
+}
+
+.burn-btn:hover:not(:disabled) {
+  border-color: #ff8a3c;
+  background: rgba(255, 106, 31, 0.15);
+}
+
+/* ------------------------------------------------------------ hall of shame */
+.tomb {
+  position: relative;
+  padding: 10px 12px;
+  border: 1px solid rgba(169, 155, 132, 0.25);
+  border-radius: 40px 40px 10px 10px / 26px 26px 10px 10px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.05), transparent 50%),
+    linear-gradient(180deg, #2b2724, #1c1916);
+}
+
+.tomb-retired {
+  opacity: 0.85;
+}
+
+.tomb-head {
+  padding-right: 1.2rem;
+}
+
+.tomb-head::after {
+  content: "✝";
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  color: rgba(169, 155, 132, 0.6);
+}
+
+.tomb-retired .tomb-head::after {
+  content: "☾";
+}
+
+.tomb-epitaph {
+  margin: 0.25rem 0;
+  font-family: var(--serif);
+  font-style: italic;
+  color: #d8ccb6;
+}
+
+.tomb-meta {
+  margin: 0 0 0.4rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.tomb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ------------------------------------------------------------------ dialog */
+.dialog {
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  box-shadow: var(--shadow), 0 0 60px rgba(255, 106, 31, 0.15);
+}
+
+.dialog::backdrop {
+  background: rgba(5, 3, 2, 0.72);
+}
+
+.dialog-form {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.2rem;
+}
+
+.dialog-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  color: var(--gold-hi);
+}
+
+.burn-summary {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.dialog textarea {
+  resize: vertical;
+  min-height: 3.5rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.btn-burn {
+  border-color: #ff9a4a;
+  background: linear-gradient(180deg, #ff8a3c, #c2410c);
+  color: #fff6ee;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.btn-burn:hover:not(:disabled) {
+  border-color: #ffd0a0;
+  box-shadow: 0 0 20px rgba(255, 106, 31, 0.45);
+}
+
+/* ------------------------------------------------- burn (CSS-tray fallback) */
+.burn-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--size) * 0.9);
+}
+
+.burn-pyre {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--size) * 1.4);
+  height: calc(var(--size) * 1.4);
+}
+
+.burn-pyre > * {
+  grid-area: 1 / 1;
+}
+
+.burn-stage .die {
+  --size: inherit;
+}
+
+.scorch {
+  width: 100%;
+  height: 46%;
+  align-self: end;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4) 45%, transparent 70%);
+  opacity: 0;
+  animation: scorch-in 1.6s ease 1.2s forwards;
+}
+
+.burn-doomed {
+  animation:
+    tremble 0.09s linear 0.1s 10,
+    char 1.8s ease-in 0.9s forwards,
+    melt 0.9s ease-in 2.3s forwards;
+  transform-origin: 50% 100%;
+}
+
+.flames {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flames i {
+  position: absolute;
+  bottom: 18%;
+  left: calc(50% - var(--size) * 0.22);
+  width: calc(var(--size) * 0.44);
+  height: calc(var(--size) * 0.7);
+  border-radius: 50% 50% 45% 45% / 65% 65% 35% 35%;
+  background: radial-gradient(ellipse at 50% 75%, #fff3b0 0%, #ffc04a 30%, #ff6a1f 60%, rgba(194, 65, 12, 0) 75%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  filter: blur(1px);
+  animation: flame 0.7s ease-out infinite;
+  animation-delay: calc(1s + var(--d, 0s));
+}
+
+.flames i:nth-child(1) { --d: 0s; left: calc(50% - var(--size) * 0.5); }
+.flames i:nth-child(2) { --d: 0.15s; left: calc(50% - var(--size) * 0.1); }
+.flames i:nth-child(3) { --d: 0.3s; left: calc(50% - var(--size) * 0.32); height: calc(var(--size) * 0.9); }
+.flames i:nth-child(4) { --d: 0.45s; left: calc(50% + var(--size) * 0.08); }
+.flames i:nth-child(5) { --d: 0.6s; left: calc(50% - var(--size) * 0.24); height: calc(var(--size) * 1.05); }
+
+.burn-stage .flames {
+  animation: flames-out 0.4s ease 2.9s forwards;
+}
+
+.burn-fresh {
+  opacity: 0;
+  animation: drop-in 0.6s cubic-bezier(0.3, 1.4, 0.6, 1) 3.3s forwards;
+}
+
+.burn-stage.is-done .scorch {
+  opacity: 1;
+  animation: none;
+}
+
+.burn-stage.is-done .flames {
+  display: none;
+}
+
+.burn-stage.is-done .burn-fresh {
+  opacity: 1;
+  animation: none;
+}
+
+@keyframes tremble {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px) rotate(-2deg); }
+  75% { transform: translateX(2px) rotate(2deg); }
+}
+
+@keyframes char {
+  to { filter: brightness(0.25) sepia(1) saturate(2) drop-shadow(0 0 10px rgba(255, 106, 31, 0.9)); }
+}
+
+@keyframes melt {
+  to { transform: scale(1.35, 0.12); opacity: 0; filter: brightness(0.1); }
+}
+
+@keyframes flame {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(calc(var(--size) * -0.9)) scale(0.2); }
+}
+
+@keyframes flames-out {
+  to { opacity: 0; }
+}
+
+@keyframes scorch-in {
+  to { opacity: 1; }
+}
+
+@keyframes drop-in {
+  0% { opacity: 0; transform: translateY(calc(var(--size) * -2)); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 /* -------------------------------------------------------------- responsive */
 @media (max-width: 640px) {
   .controls {
@@ -1523,6 +2234,17 @@ h1 {
   }
 }
 
+@media (max-width: 1040px) {
+  /* Keep the −/count/+ steppers inside their rack column on narrower screens. */
+  .rack-stepper .step-small {
+    width: 28px;
+  }
+
+  .rack-count {
+    min-width: 1.2em;
+  }
+}
+
 @media (hover: none) {
   .rack-key {
     display: none;
@@ -1542,6 +2264,15 @@ h1 {
 
   .die.tumbling {
     animation: none !important;
+  }
+
+  .rack-item.is-lucky .rack-lucky,
+  .die.is-lucky::after {
+    animation: none !important;
+  }
+
+  .flames {
+    display: none;
   }
 }
 

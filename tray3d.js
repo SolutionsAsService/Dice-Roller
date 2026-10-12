@@ -47,6 +47,8 @@ const state = {
   sun: null,
   diceGroup: null,
   dice: [], // { mesh, glow, plan index, info }
+  fx: [], // extra scene objects (sparkles, flames, scorch marks) owned by the current dice
+  fxRaf: 0,
   plan: null,
   raf: 0,
   safety: 0,
@@ -56,11 +58,59 @@ const state = {
   height: 0,
 };
 
-const assets = { geometry: {}, materials: {}, glowTexture: null };
+const assets = { geometry: {}, looks: new Map(), glowTexture: null, starTexture: null };
+const MAX_LOOK_CACHE = 48; // kind × look materials kept around before the cache is flushed
 
 // ------------------------------------------------------------------ helpers
 function mixHex(a, b, t) {
   return '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
+}
+
+/** Relative luminance (0–1) of an sRGB "#rrggbb" colour. */
+function srgbLuminance(hex) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  if (!Number.isFinite(n)) return 1;
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+}
+
+function hexAlpha(hex, a) {
+  const n = new THREE.Color(hex).getHex();
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+/** Canvas colours for one die kind in a player's look (null look / no body colour = classic rainbow). */
+function styleFor(kind, look) {
+  if (!look || !look.body) return Object.assign({ classic: true }, STYLE[kind]);
+  const ink = look.ink || '#ffffff';
+  return {
+    classic: false,
+    a: mixHex(look.body, '#ffffff', 0.1),
+    b: mixHex(look.body, '#000000', kind === 'd100t' ? 0.62 : 0.5),
+    ink,
+    edge: hexAlpha(ink, 0.45),
+  };
+}
+
+function lookKey(look) {
+  if (!look || !look.body) return 'classic:' + ((look && look.finish) || 'glossy');
+  return look.body + look.ink + ':' + (look.finish || 'glossy');
+}
+
+/** MeshPhysicalMaterial settings for a finish. */
+function finishParams(finish, kind, classic) {
+  if (finish === 'matte') return { roughness: 0.78, metalness: 0, clearcoat: 0.05, clearcoatRoughness: 0.6 };
+  if (finish === 'metal') return { roughness: 0.3, metalness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.3 };
+  if (finish === 'pearl') {
+    return { roughness: 0.3, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.15, iridescence: 1, iridescenceIOR: 1.5,
+      iridescenceThicknessRange: [180, 620], sheen: 0.25, sheenColor: new THREE.Color(0xffffff), sheenRoughness: 0.5 };
+  }
+  if (finish === 'gem') {
+    return { roughness: 0.06, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, transparent: true, opacity: 0.84, ior: 1.7, specularIntensity: 1 };
+  }
+  // glossy (the original look)
+  if (kind === 'd6') return { roughness: 0.34, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.25 };
+  if (classic && kind.startsWith('d100')) return { roughness: 0.38, metalness: 0.25, clearcoat: 0.7, clearcoatRoughness: 0.22 };
+  return { roughness: 0.3, metalness: 0.02, clearcoat: 0.7, clearcoatRoughness: 0.22 };
 }
 
 function font(px) {
@@ -102,7 +152,7 @@ function drawLabel(ctx, text, x, y, px, style, rotation) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
-  const dark = style.ink !== '#ffffff' && style.ink !== '#f0d48a';
+  const dark = srgbLuminance(style.ink) < 0.45;
   ctx.lineWidth = Math.max(2, px * 0.09);
   ctx.strokeStyle = dark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.55)';
   ctx.strokeText(text, 0, px * 0.04);
@@ -126,9 +176,8 @@ function faceBackground(ctx, x, y, size, style) {
 
 // -------------------------------------------------------------- die meshes
 /** Texture atlas + flat-shaded BufferGeometry for a polyhedral (non-d6) kind. */
-function buildPolyhedron(kind) {
+function buildPolyhedron(kind, style, finish) {
   const die = Geo.getDie(kind);
-  const style = STYLE[kind];
   const F = die.faces.length;
   const cols = Math.ceil(Math.sqrt(F));
   const rows = Math.ceil(F / cols);
@@ -194,13 +243,7 @@ function buildPolyhedron(kind) {
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.computeBoundingSphere();
-  const material = new THREE.MeshPhysicalMaterial({
-    map: canvasTexture(canvas),
-    roughness: kind.startsWith('d100') ? 0.38 : 0.3,
-    metalness: kind.startsWith('d100') ? 0.25 : 0.02,
-    clearcoat: 0.7,
-    clearcoatRoughness: 0.22,
-  });
+  const material = new THREE.MeshPhysicalMaterial(Object.assign({ map: canvasTexture(canvas) }, finishParams(finish, kind, style.classic)));
   return { geometry, material };
 }
 
@@ -208,11 +251,10 @@ const PIPS = { 1: [[0, 0]], 2: [[-1, 1], [1, -1]], 3: [[-1, 1], [0, 0], [1, -1]]
   5: [[-1, 1], [1, 1], [0, 0], [-1, -1], [1, -1]], 6: [[-1, 1], [1, 1], [-1, 0], [1, 0], [-1, -1], [1, -1]] };
 
 /** Rounded cube with pips (matches the CSS d6). */
-function buildD6() {
+function buildD6(style, finish) {
   const die = Geo.getDie('d6');
-  const style = STYLE.d6;
   const edge = die.inradius * 2;
-  const geometry = new RoundedBoxGeometry(edge, edge, edge, 5, edge * 0.14);
+  const geometry = assets.geometry.d6 || new RoundedBoxGeometry(edge, edge, edge, 5, edge * 0.14);
   const materials = die.faces.map((face) => {
     const size = 256;
     const canvas = makeCanvas(size, size);
@@ -224,8 +266,13 @@ function buildD6() {
       const y = size / 2 - py * size * 0.25;
       const r = size * (one ? 0.13 : 0.085);
       const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
-      g.addColorStop(0, one ? '#7a1220' : '#1e130a');
-      g.addColorStop(1, one ? '#c02a35' : '#5a3a1c');
+      if (style.classic) {
+        g.addColorStop(0, one ? '#7a1220' : '#1e130a');
+        g.addColorStop(1, one ? '#c02a35' : '#5a3a1c');
+      } else {
+        g.addColorStop(0, mixHex(style.ink, '#000000', 0.35));
+        g.addColorStop(1, style.ink);
+      }
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fillStyle = g;
@@ -234,24 +281,34 @@ function buildD6() {
       ctx.strokeStyle = 'rgba(255,255,255,0.35)';
       ctx.stroke();
     });
-    return new THREE.MeshPhysicalMaterial({
-      map: canvasTexture(canvas),
-      roughness: 0.34,
-      metalness: 0,
-      clearcoat: 0.6,
-      clearcoatRoughness: 0.25,
-    });
+    return new THREE.MeshPhysicalMaterial(Object.assign({ map: canvasTexture(canvas) }, finishParams(finish, 'd6', style.classic)));
   });
   return { geometry, material: materials };
 }
 
-function kindAssets(kind) {
-  if (!assets.geometry[kind]) {
-    const built = kind === 'd6' ? buildD6() : buildPolyhedron(kind);
-    assets.geometry[kind] = built.geometry;
-    assets.materials[kind] = built.material;
+/** Geometry (shared per kind) and material (per kind × player look). */
+function kindAssets(kind, look) {
+  const key = kind + '|' + lookKey(look);
+  let material = assets.looks.get(key);
+  if (!material) {
+    const style = styleFor(kind, look);
+    const finish = (look && look.finish) || 'glossy';
+    const built = kind === 'd6' ? buildD6(style, finish) : buildPolyhedron(kind, style, finish);
+    if (!assets.geometry[kind]) assets.geometry[kind] = built.geometry;
+    else if (built.geometry !== assets.geometry[kind]) built.geometry.dispose();
+    material = built.material;
+    assets.looks.set(key, material);
   }
-  return { geometry: assets.geometry[kind], material: assets.materials[kind] };
+  return { geometry: assets.geometry[kind], material };
+}
+
+/** Free cached look materials once too many have piled up (only between rolls, when no mesh uses them). */
+function trimLookCache() {
+  if (assets.looks.size <= MAX_LOOK_CACHE) return;
+  assets.looks.forEach((m) => {
+    (Array.isArray(m) ? m : [m]).forEach((x) => { if (x.map) x.map.dispose(); x.dispose(); });
+  });
+  assets.looks.clear();
 }
 
 function cloneMaterial(m) {
@@ -326,6 +383,50 @@ function glowTexture() {
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
+  return canvasTexture(canvas);
+}
+
+/** Soft teardrop flame (white; tinted per sprite). */
+function flameTexture() {
+  const w = 64;
+  const h = 128;
+  const canvas = makeCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 2);
+  ctx.bezierCurveTo(w * 0.62, h * 0.3, w * 0.98, h * 0.55, w * 0.9, h * 0.75);
+  ctx.bezierCurveTo(w * 0.82, h * 0.97, w * 0.18, h * 0.97, w * 0.1, h * 0.75);
+  ctx.bezierCurveTo(w * 0.02, h * 0.55, w * 0.38, h * 0.3, w / 2, 2);
+  ctx.closePath();
+  const g = ctx.createRadialGradient(w / 2, h * 0.72, 1, w / 2, h * 0.62, h * 0.48);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.45, 'rgba(255,255,255,0.55)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.filter = 'blur(2px)';
+  ctx.fill();
+  return canvasTexture(canvas);
+}
+
+/** Four-pointed twinkle for lucky dice. */
+function starTexture() {
+  const size = 128;
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const c = size / 2;
+  const g = ctx.createRadialGradient(c, c, 0, c, c, c);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.2, 'rgba(255,255,255,0.55)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const r = i % 2 === 0 ? c : c * 0.16;
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+    ctx.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r);
+  }
+  ctx.closePath();
+  ctx.fill();
   return canvasTexture(canvas);
 }
 
@@ -493,6 +594,8 @@ function init() {
     state.diceGroup = new THREE.Group();
     scene.add(state.diceGroup);
     assets.glowTexture = glowTexture();
+    assets.starTexture = starTexture();
+    assets.flameTexture = flameTexture();
 
     measure();
     state.bounds = boundsForSize();
@@ -546,6 +649,8 @@ function onResize() {
         d.mesh.position.x = THREE.MathUtils.clamp(d.mesh.position.x * sx, -next.hw + r, next.hw - r);
         d.mesh.position.z = THREE.MathUtils.clamp(d.mesh.position.z * sz, -next.hd + r, next.hd - r);
         if (d.glow) d.glow.position.set(d.mesh.position.x, 0.012, d.mesh.position.z);
+        if (d.halo) d.halo.position.set(d.mesh.position.x, 0.011, d.mesh.position.z);
+        if (d.badge) d.badge.position.set(d.mesh.position.x + d.size * 0.75, d.mesh.position.y + d.size * 0.95, d.mesh.position.z);
       });
     }
     fitCamera();
@@ -554,7 +659,48 @@ function onResize() {
 }
 
 // ---------------------------------------------------------------- dice life
+function addFx(obj) {
+  state.scene.add(obj);
+  state.fx.push(obj);
+  return obj;
+}
+
+function removeFx(obj) {
+  const i = state.fx.indexOf(obj);
+  if (i >= 0) state.fx.splice(i, 1);
+  state.scene.remove(obj);
+  if (obj.material) obj.material.dispose();
+  if (obj.geometry && !obj.isSprite) obj.geometry.dispose();
+}
+
+function disposeFx() {
+  cancelAnimationFrame(state.fxRaf);
+  state.fxRaf = 0;
+  state.fx.slice().forEach(removeFx);
+  state.fx = [];
+}
+
+function sprite(texture, color, opacity, additive) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texture, color, transparent: true, opacity, depthWrite: false,
+    blending: additive === false ? THREE.NormalBlending : THREE.AdditiveBlending,
+  }));
+  return s;
+}
+
+function floorDecal(color, size, opacity, additive) {
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ map: assets.glowTexture, color, transparent: true, opacity, depthWrite: false,
+      blending: additive === false ? THREE.NormalBlending : THREE.AdditiveBlending }),
+  );
+  m.scale.set(size, size, 1);
+  m.rotation.x = -Math.PI / 2;
+  return m;
+}
+
 function disposeDice() {
+  disposeFx();
   state.dice.forEach((d) => {
     eachMaterial(d.mesh, (m) => m.dispose());
     state.diceGroup.remove(d.mesh);
@@ -566,6 +712,7 @@ function disposeDice() {
   });
   state.dice = [];
   state.plan = null;
+  trimLookCache();
 }
 
 function hideCanvas() {
@@ -575,6 +722,8 @@ function hideCanvas() {
 
 function stopAnimation(resolve) {
   cancelAnimationFrame(state.raf);
+  cancelAnimationFrame(state.fxRaf);
+  state.fxRaf = 0;
   clearTimeout(state.safety);
   state.raf = 0;
   state.animating = false;
@@ -609,6 +758,22 @@ function applyHighlight(d) {
     }
     m.needsUpdate = true;
   });
+  if (info.lucky) {
+    // Lucky die: a soft clover-gold halo and a little star badge. Purely decorative.
+    eachMaterial(d.mesh, (m) => {
+      if (!info.crit && !info.fumble && !info.max) {
+        m.emissive.set(0xffe08a);
+        m.emissiveIntensity = 0.06;
+      }
+    });
+    const halo = addFx(floorDecal(0xb8f07a, d.size * 3.2, info.kept ? 0.55 : 0.25));
+    halo.position.set(d.mesh.position.x, 0.011, d.mesh.position.z);
+    d.halo = halo;
+    const badge = addFx(sprite(assets.starTexture, 0xfff1b0, info.kept ? 0.95 : 0.5));
+    badge.scale.setScalar(d.size * 0.55);
+    badge.position.set(d.mesh.position.x + d.size * 0.75, d.mesh.position.y + d.size * 0.95, d.mesh.position.z);
+    d.badge = badge;
+  }
   if (info.kept && (info.crit || info.fumble || info.max)) {
     const color = info.crit ? 0xf5c542 : info.fumble ? 0xe2553f : 0xf0d48a;
     const glow = new THREE.Mesh(
@@ -654,6 +819,7 @@ function roll(list, options) {
       max: item.kept && item.value === item.sides && !item.crit,
     }, item) }));
   });
+  const look = (options && options.look) || null;
   const size = dieSize(bodies.length);
   const plan = Phys.planRoll({
     dice: bodies.map((b) => ({ kind: b.kind, value: b.value, size: size * KIND_SCALE[b.kind] })),
@@ -662,7 +828,7 @@ function roll(list, options) {
   });
   state.plan = plan;
   state.dice = bodies.map((b, i) => {
-    const { geometry, material } = kindAssets(b.kind);
+    const { geometry, material } = kindAssets(b.kind, look);
     const mesh = new THREE.Mesh(geometry, cloneMaterial(material));
     const s = plan.dice[i].size;
     mesh.scale.setScalar(s);
@@ -681,6 +847,7 @@ function roll(list, options) {
       applyHighlight(d);
     });
     render();
+    if (!reduced) sparkleLucky();
   };
 
   if (reduced || plan.duration <= 0) {
@@ -719,6 +886,286 @@ function roll(list, options) {
   });
 }
 
+/** A short burst of twinkling stars around lucky dice after they settle (skipped for reduced motion). */
+function sparkleLucky(targets, duration) {
+  const lucky = targets || state.dice.filter((d) => d.info && d.info.lucky && d.info.kept);
+  if (!lucky.length) return;
+  const total = duration || 2.4;
+  const stars = [];
+  lucky.forEach((d) => {
+    for (let k = 0; k < 9; k++) {
+      const s = addFx(sprite(assets.starTexture, k % 3 === 0 ? 0xb8f07a : 0xffe7a0, 0));
+      stars.push({ s, d, angle: (k / 9) * Math.PI * 2 + Math.random() * 0.4, radius: d.size * (0.9 + Math.random() * 0.7),
+        height: d.size * (0.2 + Math.random() * 1.3), phase: Math.random() * Math.PI * 2, speed: 5 + Math.random() * 5,
+        scale: d.size * (0.35 + Math.random() * 0.4) });
+    }
+  });
+  const start = performance.now();
+  const frame = () => {
+    const t = (performance.now() - start) / 1000;
+    const env = Math.min(1, t / 0.25) * Math.min(1, Math.max(0, (total - t) / 0.6));
+    stars.forEach((st) => {
+      const tw = Math.abs(Math.sin(t * st.speed + st.phase));
+      const a = st.angle + t * 0.9;
+      st.s.position.set(st.d.mesh.position.x + Math.cos(a) * st.radius, st.d.mesh.position.y + st.height + t * 0.25,
+        st.d.mesh.position.z + Math.sin(a) * st.radius);
+      st.s.scale.setScalar(st.scale * (0.35 + 0.65 * tw));
+      st.s.material.opacity = env * (0.35 + 0.65 * tw);
+    });
+    render();
+    if (t < total) {
+      state.fxRaf = requestAnimationFrame(frame);
+    } else {
+      state.fxRaf = 0;
+      stars.forEach((st) => removeFx(st.s));
+      render();
+    }
+  };
+  cancelAnimationFrame(state.fxRaf);
+  state.fxRaf = requestAnimationFrame(frame);
+}
+
+/**
+ * Run a scripted animation; step(t) is called every frame with the animation
+ * time in seconds. Time advances by at most 0.1 s per frame, so a slow device
+ * (or a first-frame shader compile) plays the whole effect instead of skipping
+ * to the end. If frames stop entirely (background tab), it finishes anyway.
+ */
+function timeline(duration, step) {
+  return new Promise((resolve) => {
+    state.animating = true;
+    state.finish = resolve;
+    let t = 0;
+    let last = performance.now();
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      // Like stopAnimation(false), but lets an fx burst (sparkles) finish on its own.
+      cancelAnimationFrame(state.raf);
+      clearTimeout(state.safety);
+      state.raf = 0;
+      state.animating = false;
+      state.finish = null;
+      step(duration);
+      render();
+      resolve();
+    };
+    const frame = () => {
+      if (done || state.finish !== resolve) return;
+      const now = performance.now();
+      t += Math.min((now - last) / 1000, 0.1);
+      last = now;
+      if (t >= duration) { finish(); return; }
+      step(t);
+      render();
+      seen = performance.now();
+      state.raf = requestAnimationFrame(frame);
+    };
+    step(0);
+    render();
+    last = performance.now();
+    let seen = last;
+    state.raf = requestAnimationFrame(frame);
+    const watchdog = () => {
+      if (done || state.finish !== resolve) return;
+      if (performance.now() - seen > 1500) finish(); // frames stalled: deliver the end state
+      else state.safety = setTimeout(watchdog, 500);
+    };
+    state.safety = setTimeout(watchdog, duration * 1000 + 400);
+  });
+}
+
+const smoothstep = (a, b, x) => {
+  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+/** Meshes for one die of the given type resting at (x, z), using the player's look. */
+function placeDie(sides, value, look, x, z, size, info) {
+  const parts = Geo.bodiesFor(sides, value) || [];
+  const plan = Phys.planRoll({
+    dice: parts.map((p) => ({ kind: p.kind, value: p.value, size: size * KIND_SCALE[p.kind] })),
+    bounds: state.bounds,
+    reduced: true,
+  });
+  return parts.map((p, i) => {
+    const { geometry, material } = kindAssets(p.kind, look);
+    const mesh = new THREE.Mesh(geometry, cloneMaterial(material));
+    const s = plan.dice[i].size;
+    mesh.scale.setScalar(s);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    const pose = Phys.poseAt(plan, i, Infinity);
+    const offset = parts.length > 1 ? (i - 0.5) * s * 2.3 : 0;
+    mesh.position.set(x + offset, pose.pos[1], z);
+    mesh.quaternion.set(pose.quat[0], pose.quat[1], pose.quat[2], pose.quat[3]);
+    state.diceGroup.add(mesh);
+    const d = { mesh, glow: null, info: Object.assign({ kept: true, sign: 1, sides, value }, info), kind: p.kind, value: p.value, size: s,
+      inradius: Geo.getDie(p.kind).inradius * s, restY: pose.pos[1] };
+    state.dice.push(d);
+    return d;
+  });
+}
+
+/**
+ * The ceremonial burning of a die: it trembles, catches fire, chars, melts
+ * into a scorch mark, and a fresh replacement drops into the tray.
+ * opts: { sides, look, reduced, lucky }. Resolves when the replacement has landed.
+ */
+function burn(opts) {
+  if (!init()) return Promise.reject(new Error('3D tray unavailable'));
+  const o = opts || {};
+  const sides = o.sides;
+  stopAnimation(true);
+  disposeDice();
+  measure();
+  state.renderer.setSize(state.width, state.height, false);
+  state.bounds = boundsForSize();
+  layoutTable();
+  fitCamera();
+  state.canvas.hidden = false;
+  state.tray.classList.add('is-3d');
+
+  const size = THREE.MathUtils.clamp(state.bounds.hd * 0.32, 1.1, 2.1);
+  const doomedX = -size * 1.1;
+  const freshX = size * 1.7;
+  const scorch = addFx(floorDecal(0x000000, size * 4, 0, false));
+  scorch.position.set(doomedX, 0.013, 0.2);
+
+  if (o.reduced) {
+    scorch.material.opacity = 0.7;
+    placeDie(sides, sides, o.look, freshX, 0.2, size, {});
+    render();
+    return Promise.resolve();
+  }
+
+  const doomed = placeDie(sides, 1, o.look, doomedX, 0.2, size, { lucky: !!o.lucky });
+  const original = doomed.map((d) => {
+    const mats = [];
+    eachMaterial(d.mesh, (m) => {
+      m.transparent = true;
+      mats.push({ m, color: m.color.clone(), opacity: m.opacity });
+    });
+    return mats;
+  });
+  const charcoal = new THREE.Color(0x24170f);
+  const fire = new THREE.Color(0xff6a1f);
+
+  const light = addFx(new THREE.PointLight(0xff7a2a, 0, size * 9, 2));
+  light.position.set(doomedX, size * 1.2, 0.2);
+
+  const flames = [];
+  const respawn = (f, t) => {
+    const a = Math.random() * Math.PI * 2;
+    const r = size * (0.15 + Math.random() * 0.6);
+    f.ox = Math.cos(a) * r;
+    f.oz = Math.sin(a) * r * 0.8;
+    f.y0 = size * (0.2 + Math.random() * 0.6);
+    f.born = t;
+    f.life = 0.45 + Math.random() * 0.5;
+    f.speed = size * (1.2 + Math.random() * 1.3);
+    f.drift = (Math.random() - 0.5) * size * 0.6;
+    f.big = 0.6 + Math.random() * 0.5;
+  };
+  for (let i = 0; i < 40; i++) {
+    const s = addFx(sprite(assets.flameTexture, 0xffa040, 0));
+    // Fire engulfs the die: draw flames over it rather than hiding them behind it.
+    s.material.depthTest = false;
+    s.renderOrder = 10;
+    const f = { s };
+    respawn(f, 0.95 + Math.random() * 0.8);
+    flames.push(f);
+  }
+  const smoke = [];
+  for (let i = 0; i < 14; i++) {
+    const s = addFx(sprite(assets.glowTexture, 0x4a4440, 0, false));
+    smoke.push({ s, born: 2.2 + i * 0.1, ox: (Math.random() - 0.5) * size, oz: (Math.random() - 0.5) * size * 0.6 });
+  }
+
+  const DURATION = 4.4;
+  const FRESH_START = 3.45;
+  let fresh = null;
+  let freshSparkled = false;
+  const tremble = (t) => (t > 0.15 && t < 1.25 ? Math.sin(t * 70) * size * 0.035 * (1 - smoothstep(0.9, 1.25, t)) : 0);
+
+  return timeline(DURATION, (t) => {
+    const burnK = smoothstep(1.0, 2.6, t); // how charred
+    const env = smoothstep(0.95, 1.35, t) * (1 - smoothstep(2.7, 3.3, t)); // fire intensity
+    const flicker = 0.75 + 0.25 * Math.sin(t * 37) * Math.sin(t * 23 + 1.3);
+    const melt = smoothstep(2.25, 3.15, t);
+    const fade = 1 - smoothstep(2.95, 3.3, t);
+
+    doomed.forEach((d, i) => {
+      const sy = 1 - melt * 0.85;
+      const sxz = 1 + melt * 0.4;
+      d.mesh.scale.set(d.size * sxz, d.size * sy, d.size * sxz);
+      d.mesh.position.x = doomedX + (doomed.length > 1 ? (i - 0.5) * d.size * 2.3 : 0) + tremble(t);
+      d.mesh.position.y = d.restY * sy;
+      d.mesh.visible = fade > 0.001;
+      original[i].forEach(({ m, color, opacity }) => {
+        m.color.copy(color).lerp(charcoal, burnK);
+        m.emissive.copy(fire);
+        m.emissiveIntensity = env * flicker * 0.6 + burnK * (1 - fade) * 0.3;
+        m.opacity = opacity * fade;
+        m.clearcoat = 0.7 * (1 - burnK);
+      });
+    });
+    if (doomed[0] && doomed[0].badge) {
+      doomed[0].badge.material.opacity = 0.95 * (1 - smoothstep(0.9, 1.4, t));
+    }
+
+    light.intensity = env * flicker * 40;
+    scorch.material.opacity = 0.75 * smoothstep(1.4, 2.8, t);
+
+    flames.forEach((f) => {
+      let age = t - f.born;
+      if (age > f.life && t < 2.85) { respawn(f, t); age = 0; }
+      if (age < 0 || age > f.life) { f.s.material.opacity = 0; return; }
+      const k = age / f.life;
+      f.s.position.set(doomedX + f.ox * (1 - k * 0.5) + f.drift * k, f.y0 * (1 - melt * 0.6) + f.speed * age, 0.2 + f.oz);
+      const fs = size * f.big * (0.75 + 0.5 * Math.sin(k * Math.PI)) * (1 - k * 0.5);
+      f.s.scale.set(fs, fs * 1.8, 1);
+      f.s.material.color.setHSL(0.11 - k * 0.09, 1, 0.5 - k * 0.18);
+      f.s.material.opacity = env * Math.sin(k * Math.PI) * 0.6;
+    });
+    smoke.forEach((m) => {
+      const age = t - m.born;
+      if (age < 0) { m.s.material.opacity = 0; return; }
+      const k = Math.min(1, age / 1.6);
+      m.s.position.set(doomedX + m.ox + k * size * 0.4, size * 0.6 + age * size * 1.3, 0.2 + m.oz);
+      m.s.scale.setScalar(size * (1 + k * 2));
+      m.s.material.opacity = 0.32 * Math.sin(k * Math.PI);
+    });
+
+    if (t >= FRESH_START && !fresh) {
+      fresh = placeDie(sides, sides, o.look, freshX, 0.2, size, {});
+    }
+    if (fresh) {
+      const k = THREE.MathUtils.clamp((t - FRESH_START) / 0.6, 0, 1);
+      // Drop with a little bounce.
+      const bounce = k < 0.7 ? 1 - Math.pow(k / 0.7, 2) : Math.sin(((k - 0.7) / 0.3) * Math.PI) * 0.12;
+      fresh.forEach((d) => { d.mesh.position.y = d.restY + bounce * size * 4; });
+      if (k >= 1 && !freshSparkled) {
+        freshSparkled = true;
+        sparkleLucky(fresh, 1.1);
+      }
+    }
+  }).then(() => {
+    doomed.forEach((d) => {
+      eachMaterial(d.mesh, (m) => m.dispose());
+      state.diceGroup.remove(d.mesh);
+    });
+    state.dice = state.dice.filter((d) => !doomed.includes(d));
+    flames.forEach((f) => removeFx(f.s));
+    smoke.forEach((m) => removeFx(m.s));
+    removeFx(light);
+    if (!fresh) fresh = placeDie(sides, sides, o.look, freshX, 0.2, size, {});
+    fresh.forEach((d) => { d.mesh.position.y = d.restY; });
+    render();
+  });
+}
+
 /** Remove every die and hide the 3D tray (between rolls / when the selection changes). */
 function clear() {
   if (!state.ready) return;
@@ -738,6 +1185,7 @@ function inspect() {
 window.DiceTray3D = {
   available: () => init(),
   roll,
+  burn,
   clear,
   inspect,
   get animating() { return state.animating; },

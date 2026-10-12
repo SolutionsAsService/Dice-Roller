@@ -9,6 +9,9 @@
   }
 
   const { DICE } = Core;
+  // Player profiles, lucky dice and the Hall of Shame (dice-profiles.js). Optional:
+  // if it failed to load, the dice box works exactly as before without them.
+  const Profiles = window.DiceProfiles || null;
   const STORAGE_KEYS = {
     history: 'diceBox.history.v1',
     presets: 'diceBox.presets.v1',
@@ -63,6 +66,37 @@
     clearHistory: $('clear-history'),
     helpToggle: $('help-toggle'),
     helpPanel: $('help-panel'),
+    playerChip: $('player-chip'),
+    playersPanel: $('players-panel'),
+    playerList: $('player-list'),
+    addPlayer: $('add-player'),
+    storageNote: $('storage-note'),
+    playerEditor: $('player-editor'),
+    editorName: $('editor-name'),
+    playerForm: $('player-form'),
+    playerName: $('player-name'),
+    playerTheme: $('player-theme'),
+    playerBody: $('player-body'),
+    playerInk: $('player-ink'),
+    playerFinish: $('player-finish'),
+    lookPreview: $('look-preview'),
+    deletePlayer: $('delete-player'),
+    exportProfiles: $('export-profiles'),
+    importProfiles: $('import-profiles'),
+    importFile: $('import-file'),
+    bagPanel: $('bag-panel'),
+    bagOwner: $('bag-owner'),
+    bagList: $('bag-list'),
+    bagStatus: $('bag-status'),
+    shamePanel: $('shame-panel'),
+    shameCount: $('shame-count'),
+    shameEmpty: $('shame-empty'),
+    shameList: $('shame-list'),
+    burnDialog: $('burn-dialog'),
+    burnTitle: $('burn-title'),
+    burnSummary: $('burn-summary'),
+    burnEpitaph: $('burn-epitaph'),
+    burnCancel: $('burn-cancel'),
   };
 
   const reducedMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
@@ -231,6 +265,7 @@
         '<button type="button" class="rack-die" data-action="add" aria-keyshortcuts="' + key + '"' +
         ' aria-describedby="rack-count-' + sides + '">' +
           '<kbd class="rack-key" aria-hidden="true">' + key + '</kbd>' +
+          '<span class="rack-lucky" aria-hidden="true" title="Lucky die">★</span>' +
           '<span class="rack-icon"></span>' +
           '<span class="rack-name"><span class="visually-hidden">Add a </span>d' + sides + '</span>' +
         '</button>' +
@@ -246,10 +281,12 @@
   }
 
   function updateRack() {
+    const lucky = luckySides();
     el.rack.querySelectorAll('.rack-item').forEach((li) => {
       const sides = Number(li.dataset.sides);
       const n = state.pool[sides];
       li.classList.toggle('is-selected', n > 0);
+      li.classList.toggle('is-lucky', sides === lucky);
       li.querySelector('.num').textContent = n;
       li.querySelector('[data-action="remove"]').disabled = n === 0;
     });
@@ -449,7 +486,8 @@
 
   function flattenDice(result) {
     const list = [];
-    result.groups.forEach((g) => g.dice.forEach((d) => list.push(Object.assign({ sign: g.sign }, d))));
+    const lucky = luckySides();
+    result.groups.forEach((g) => g.dice.forEach((d) => list.push(Object.assign({ sign: g.sign, lucky: d.sides === lucky }, d))));
     return list;
   }
 
@@ -459,6 +497,7 @@
     die.classList.toggle('is-crit', !!d.crit);
     die.classList.toggle('is-fumble', !!d.fumble);
     die.classList.toggle('is-max', d.kept && d.value === d.sides && !d.crit);
+    die.classList.toggle('is-lucky', !!d.lucky);
   }
 
   // The 3D tray (tray3d.js, an ES module using three.js) registers window.DiceTray3D.
@@ -497,7 +536,7 @@
       void el.box.offsetWidth;
       el.box.classList.add('is-shaking');
     }
-    return t3d.roll(visual, { reduced }).then(
+    return t3d.roll(visual, { reduced, look: playerLook() }).then(
       () => { el.box.classList.remove('is-shaking'); },
       () => {
         clear3d();
@@ -632,17 +671,21 @@
     el.rollBtn.removeAttribute('aria-busy');
     state.lastResult = result;
     state.lastNotation = Core.toNotation(parsed);
-    showResult(result);
+    // Bookkeeping only: the result was already decided by DiceCore above.
+    const credited = recordProfileRoll(result);
+    showResult(result, credited);
     addHistory(result);
     updateRollButton();
   }
 
-  function showResult(result) {
+  function showResult(result, credited) {
     el.resultCard.dataset.state = 'done';
     el.resultCard.classList.remove('is-stale', 'is-crit', 'is-fumble');
     el.resultLabel.textContent = 'Result';
     const modeText = result.mode !== 'normal' ? ' · ' + Core.modeLabel(result.mode) : '';
-    el.resultNotation.textContent = result.notation + modeText;
+    const luckyType = luckySides();
+    const who = profiles && profiles.players.length > 1 ? ' · ' + player().name : '';
+    el.resultNotation.textContent = result.notation + modeText + who;
     el.total.textContent = result.total;
     el.total.classList.remove('pop');
     if (!reducedMotion.matches) {
@@ -653,6 +696,11 @@
     const msgs = [];
     if (result.crits) msgs.push('<span class="banner-crit">' + (result.crits > 1 ? result.crits + ' × ' : '') + 'Natural 20!</span>');
     if (result.fumbles) msgs.push('<span class="banner-fumble">' + (result.fumbles > 1 ? result.fumbles + ' × ' : '') + 'Natural 1</span>');
+    const luckyRoll = (credited || []).find((c) => c.lucky);
+    if (luckyRoll) {
+      if (luckyRoll.values.includes(luckyRoll.sides)) msgs.push('<span class="banner-lucky">★ Lucky die delivers!</span>');
+      else if (luckyRoll.values.includes(1)) msgs.push('<span class="banner-lucky is-sus">★ “Lucky” die, huh?</span>');
+    }
     el.banner.innerHTML = msgs.join('');
     el.banner.hidden = msgs.length === 0;
     if (result.crits) el.resultCard.classList.add('is-crit');
@@ -668,6 +716,7 @@
         if (d.crit) { cls.push('crit'); title += ' – natural 20'; }
         if (d.fumble) { cls.push('fumble'); title += ' – natural 1'; }
         if (d.kept && d.value === d.sides && !d.crit) cls.push('max');
+        if (d.sides === luckyType) { cls.push('lucky'); title += ' – lucky die'; }
         return '<li class="' + cls.join(' ') + '" title="' + title + '">' + d.value + '</li>';
       }).join('');
       const extra = g.adv ? ' <span class="tag">' + (result.mode === 'adv' ? 'adv' : 'dis') + '</span>' : '';
@@ -705,6 +754,7 @@
       crit: result.crits > 0,
       fumble: result.fumbles > 0,
       time: result.timestamp,
+      player: profiles ? player().name : undefined,
     });
     state.history.length = Math.min(state.history.length, MAX_HISTORY);
     save(STORAGE_KEYS.history, state.history);
@@ -719,12 +769,13 @@
       const timeText = isNaN(time) ? '' : time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       const mode = h.mode === 'adv' ? '<span class="tag">adv</span>' : h.mode === 'dis' ? '<span class="tag">dis</span>' : '';
       const cls = 'history-item' + (h.crit ? ' crit' : '') + (h.fumble ? ' fumble' : '');
+      const who = h.player && profiles && profiles.players.length > 1 ? '<span class="tag tag-player">' + escapeHtml(h.player) + '</span>' : '';
       return '<li class="' + cls + '">' +
         '<button type="button" class="history-btn" data-id="' + escapeHtml(h.id) + '"' +
         ' aria-label="Roll ' + escapeHtml(h.notation) + (h.mode !== 'normal' ? ' with ' + Core.modeLabel(h.mode) : '') + ' again (previous total ' + h.total + ')">' +
           '<span class="h-total">' + h.total + '</span>' +
           '<span class="h-main">' +
-            '<span class="h-notation">' + escapeHtml(h.notation) + ' ' + mode + '</span>' +
+            '<span class="h-notation">' + escapeHtml(h.notation) + ' ' + mode + who + '</span>' +
             '<span class="h-detail">' + escapeHtml(h.detail || '') + '</span>' +
           '</span>' +
           '<span class="h-side"><time datetime="' + (isNaN(time) ? '' : time.toISOString()) + '">' + timeText + '</time>' +
@@ -765,6 +816,512 @@
     save(STORAGE_KEYS.presets, state.presets);
     renderPresets();
     showHint('Saved ' + notation + ' to quick rolls.', 'ok');
+  }
+
+  // --------------------------------------------------------------- profiles
+  // Everything below is bookkeeping and cosmetics; DiceCore alone decides rolls.
+  const profileStore = (() => {
+    try { return window.localStorage; } catch (e) { return null; }
+  })();
+  let profiles = null;
+  let profilesPersistent = false;
+  let burnTarget = null;
+
+  function loadProfiles() {
+    if (!Profiles) return;
+    const r = Profiles.load(profileStore);
+    profiles = r.data;
+    profilesPersistent = r.persistent;
+    let note = '';
+    if (!r.persistent) {
+      note = 'This browser isn\u2019t letting the page save data, so players and dice stats last only until the tab closes. Use Backup \u2192 Export to keep them.';
+    } else if (r.status === 'corrupt' || r.status === 'future') {
+      note = (r.status === 'future' ? 'Your saved profiles come from a newer version of the dice box' : 'Your saved profiles couldn\u2019t be read') +
+        ', so a fresh table was set up. The old data was kept as a backup in this browser.';
+    }
+    if (r.status === 'migrated') persistProfiles();
+    el.storageNote.textContent = note;
+    el.storageNote.hidden = !note;
+  }
+
+  function persistProfiles() {
+    if (!profiles || !profilesPersistent) return;
+    if (!Profiles.save(profileStore, profiles)) {
+      el.storageNote.textContent = 'Couldn\u2019t save profiles (is storage full?). Export a backup to be safe.';
+      el.storageNote.hidden = false;
+    }
+  }
+
+  function player() {
+    return profiles ? Profiles.activePlayer(profiles) : null;
+  }
+
+  function playerLook() {
+    const p = player();
+    return p ? p.look : null;
+  }
+
+  function luckySides() {
+    const p = player();
+    const d = p && Profiles.luckyDie(p);
+    return d ? d.sides : null;
+  }
+
+  function recordProfileRoll(result) {
+    const p = player();
+    if (!p) return [];
+    const credited = Profiles.recordRoll(p, result);
+    if (credited.length) {
+      persistProfiles();
+      renderBag();
+    }
+    return credited;
+  }
+
+  /** "#rrggbb" mixed toward black (t>0) or white (t<0). */
+  function shade(hex, t) {
+    const n = parseInt(hex.slice(1), 16);
+    const target = t < 0 ? 255 : 0;
+    const k = Math.abs(t);
+    const ch = (v) => Math.round(v + (target - v) * k).toString(16).padStart(2, '0');
+    return '#' + ch((n >> 16) & 255) + ch((n >> 8) & 255) + ch(n & 255);
+  }
+
+  /** Swatch CSS (custom properties) for a look; values are sanitised hex colours. */
+  function swatchStyle(look) {
+    if (!look || !look.body) return '';
+    return '--sw-a:' + shade(look.body, -0.1) + ';--sw-b:' + shade(look.body, 0.45) + ';--sw-ink:' + look.ink;
+  }
+
+  /** Recolour the CSS dice (rack, previews, fallback tray) to the active player's look. */
+  function applyLook() {
+    const look = playerLook();
+    const root = document.documentElement;
+    if (look && look.body) {
+      root.dataset.look = 'custom';
+      root.style.setProperty('--look-a', shade(look.body, -0.1));
+      root.style.setProperty('--look-b', shade(look.body, 0.5));
+      root.style.setProperty('--look-ink', look.ink);
+      root.style.setProperty('--look-ink-shadow', luminance(look.ink) < 0.45 ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.55)');
+    } else {
+      delete root.dataset.look;
+    }
+    root.dataset.finish = look ? look.finish : 'glossy';
+  }
+
+  function luminance(hex) {
+    const n = parseInt(String(hex).slice(1), 16);
+    return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  }
+
+  function dieLabel(die) {
+    return die.name + ' (d' + die.sides + ')';
+  }
+
+  function statLine(die) {
+    const st = Profiles.dieStats(die);
+    if (!st.rolls) return 'No rolls yet';
+    const max = die.sides === 20 ? 'nat 20' : 'max';
+    const min = die.sides === 20 ? 'nat 1' : '1s';
+    return st.rolls + (st.rolls === 1 ? ' roll' : ' rolls') + ' · avg ' + st.average.toFixed(1) + ' (fair ' + st.expected + ')' +
+      ' · ' + max + ' ×' + st.natMax + ' · ' + min + ' ×' + st.natMin;
+  }
+
+  function renderPlayers() {
+    const p = player();
+    el.playerList.innerHTML = profiles.players.map((x, i) => {
+      const id = 'player-opt-' + i;
+      return '<input type="radio" name="player" id="' + id + '" value="' + escapeHtml(x.id) + '"' + (x.id === p.id ? ' checked' : '') + '>' +
+        '<label for="' + id + '" class="player-opt"><span class="swatch' + (x.look.body ? '' : ' swatch-classic') + '" style="' + swatchStyle(x.look) + '" aria-hidden="true"></span>' +
+        '<span class="player-opt-name">' + escapeHtml(x.name) + '</span></label>';
+    }).join('');
+    el.addPlayer.disabled = profiles.players.length >= Profiles.MAX_PLAYERS;
+    el.deletePlayer.disabled = profiles.players.length <= 1;
+    // Header chip: quick "next player" button, handy on phones where the panel is far below.
+    el.playerChip.hidden = false;
+    el.playerChip.querySelector('.player-chip-name').textContent = p.name;
+    const sw = el.playerChip.querySelector('.swatch');
+    sw.className = 'swatch' + (p.look.body ? '' : ' swatch-classic');
+    sw.setAttribute('style', swatchStyle(p.look));
+    const multi = profiles.players.length > 1;
+    el.playerChip.setAttribute('aria-label', 'Rolling as ' + p.name + (multi ? '. Switch to the next player' : '. Manage players'));
+    el.playerChip.title = multi ? 'Next player (P)' : 'Players';
+  }
+
+  function renderEditor() {
+    const p = player();
+    el.editorName.textContent = p.name + '\u2019s';
+    if (document.activeElement !== el.playerName) el.playerName.value = p.name;
+    el.playerTheme.value = p.look.theme;
+    el.playerBody.value = p.look.body || '#f06a5f';
+    el.playerInk.value = p.look.ink || '#ffffff';
+    el.playerFinish.value = p.look.finish;
+    el.lookPreview.innerHTML = '';
+    [20, 6, 12].forEach((s) => el.lookPreview.appendChild(createDie(s, s === 6 ? 5 : s, 'die-icon')));
+  }
+
+  function renderBag(focusSelector) {
+    const p = player();
+    if (!p) return;
+    el.bagOwner.textContent = p.name;
+    el.bagList.innerHTML = Profiles.TRACKED.map((s) => {
+      const die = p.dice[s];
+      const st = Profiles.dieStats(die);
+      const label = escapeHtml(dieLabel(die));
+      return '<li class="bag-item' + (die.lucky ? ' is-lucky' : '') + '" data-sides="' + s + '">' +
+        '<span class="bag-icon" aria-hidden="true"></span>' +
+        '<div class="bag-main">' +
+          '<span class="bag-name"><span class="bag-type">d' + s + '</span> ' + escapeHtml(die.name) +
+          (die.lucky ? ' <span class="lucky-badge">★ Lucky</span>' : '') + '</span>' +
+          '<span class="bag-stats">' + escapeHtml(statLine(die)) + '</span>' +
+          '<span class="verdict verdict-' + st.verdict.key + '" title="' + escapeHtml(st.verdict.note) + '">' + escapeHtml(st.verdict.label) +
+          '<span class="visually-hidden">: ' + escapeHtml(st.verdict.note) + '</span></span>' +
+        '</div>' +
+        '<div class="bag-actions">' +
+          '<button type="button" class="icon-btn lucky-btn" data-lucky="' + s + '" aria-pressed="' + die.lucky + '"' +
+          ' aria-label="' + (die.lucky ? 'Unmark ' + label + ' as your lucky die' : 'Mark ' + label + ' as your lucky die') + '"' +
+          ' title="' + (die.lucky ? 'Your lucky die' : 'Mark as lucky') + '"><span aria-hidden="true">★</span></button>' +
+          '<button type="button" class="icon-btn burn-btn" data-burn="' + s + '" aria-label="Burn ' + label + '" title="Burn it">' +
+          '<svg class="icon-flame" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.2 2c.9 3.4-1.6 5-1.6 7.6 0 1.2.8 2.1 1.9 2.1 1.4 0 2.1-1.3 1.7-3.1 2.7 1.8 4.1 4.4 4.1 7.1A6.3 6.3 0 0 1 12 22a6.2 6.2 0 0 1-6.3-6.2c0-2.7 1.4-4.8 3.1-6.3.4-2.9 1.9-5.4 3.4-7.5z"/></svg></button>' +
+        '</div></li>';
+    }).join('');
+    el.bagList.querySelectorAll('.bag-item').forEach((li) => {
+      const s = Number(li.dataset.sides);
+      li.querySelector('.bag-icon').appendChild(createDie(s, rackFace(s), 'die-icon'));
+    });
+    if (focusSelector) {
+      const f = el.bagList.querySelector(focusSelector);
+      if (f) f.focus();
+    }
+  }
+
+  function renderShame(focusSelector) {
+    const p = player();
+    if (!p) return;
+    const list = p.graveyard;
+    el.shameEmpty.hidden = list.length > 0;
+    el.shameCount.textContent = list.length ? list.length + (list.length === 1 ? ' soul' : ' souls') : '';
+    el.shameList.innerHTML = list.map((g) => {
+      const died = new Date(g.died);
+      const when = isNaN(died) ? '' : died.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+      const label = escapeHtml(dieLabel(g));
+      return '<li class="tomb tomb-' + g.cause + '">' +
+        '<div class="tomb-head"><span class="tomb-name">' + escapeHtml(g.name) + '</span> <span class="bag-type">d' + g.sides + '</span>' +
+        (g.lucky ? ' <span class="lucky-badge is-ex">ex-lucky</span>' : '') + '</div>' +
+        '<p class="tomb-epitaph">\u201c' + escapeHtml(g.epitaph) + '\u201d</p>' +
+        '<p class="tomb-meta">' + (g.cause === 'retired' ? 'Retired' : 'Burned') + (when ? ' ' + escapeHtml(when) : '') + ' · ' + escapeHtml(statLine(g)) + '</p>' +
+        '<div class="tomb-actions">' +
+          '<button type="button" class="btn btn-ghost btn-small" data-pardon="' + escapeHtml(g.id) + '" aria-label="Pardon ' + label + ' and put it back in the bag">Pardon</button>' +
+          '<button type="button" class="btn btn-ghost btn-small btn-danger" data-scatter="' + escapeHtml(g.id) + '" aria-label="Scatter the ashes of ' + label + ' (delete for good)">Scatter ashes</button>' +
+        '</div></li>';
+    }).join('');
+    if (focusSelector) {
+      const f = el.shameList.querySelector(focusSelector) || el.shameList.querySelector('button') || el.bagList.querySelector('button');
+      if (f) f.focus();
+    }
+  }
+
+  /** Re-render everything that depends on the active player. */
+  function profilesChanged() {
+    renderPlayers();
+    renderEditor();
+    renderBag();
+    renderShame();
+    applyLook();
+    updateRack();
+    renderHistory();
+    if (state.lastResult && el.resultCard.dataset.state === 'done') {
+      const who = profiles.players.length > 1 ? ' · ' + player().name : '';
+      el.resultNotation.textContent = state.lastResult.notation + (state.lastResult.mode !== 'normal' ? ' · ' + Core.modeLabel(state.lastResult.mode) : '') + who;
+    }
+  }
+
+  function bagSay(text) {
+    el.bagStatus.textContent = text;
+  }
+
+  function switchPlayer(dirOrId) {
+    if (!profiles || state.rolling) return;
+    if (typeof dirOrId === 'string') Profiles.setActive(profiles, dirOrId);
+    else if (profiles.players.length > 1) Profiles.cyclePlayer(profiles, dirOrId);
+    persistProfiles();
+    profilesChanged();
+    el.announcer.textContent = player().name + ' is rolling.';
+  }
+
+  function setLuckyDie(sides) {
+    const p = player();
+    const die = p.dice[sides];
+    const on = Profiles.setLucky(p, sides);
+    persistProfiles();
+    renderBag('[data-lucky="' + sides + '"]');
+    updateRack();
+    bagSay(on ? '★ ' + dieLabel(die) + ' is now ' + p.name + '\u2019s lucky die. We\u2019ll see about that.' : dieLabel(die) + ' is just a regular die again.');
+  }
+
+  function openBurn(sides) {
+    const p = player();
+    const die = p.dice[sides];
+    burnTarget = { playerId: p.id, sides, dieId: die.id };
+    el.burnTitle.textContent = 'Burn ' + die.name + '?';
+    el.burnSummary.textContent = p.name + '\u2019s d' + sides + ' · ' + statLine(die) + (die.lucky ? ' · currently the lucky die (allegedly)' : '');
+    el.burnEpitaph.value = Profiles.autoEpitaph(die);
+    if (typeof el.burnDialog.showModal === 'function') {
+      el.burnDialog.returnValue = '';
+      el.burnDialog.showModal();
+      el.burnEpitaph.focus();
+      el.burnEpitaph.select();
+    } else if (window.confirm('Burn ' + dieLabel(die) + '? It goes to the Hall of Shame and a fresh die takes its place.')) {
+      confirmBurn(el.burnEpitaph.value);
+    }
+  }
+
+  async function confirmBurn(epitaph) {
+    const target = burnTarget;
+    burnTarget = null;
+    if (!target || state.rolling) return;
+    const p = profiles.players.find((x) => x.id === target.playerId);
+    if (!p || p.dice[target.sides].id !== target.dieId) return;
+    const wasLucky = p.dice[target.sides].lucky;
+    const { burned, replacement } = Profiles.burnDie(p, target.sides, { epitaph });
+    persistProfiles();
+    renderBag();
+    renderShame();
+    updateRack();
+    bagSay(burned.name + ' is on fire\u2026');
+    state.rolling = true;
+    updateRollButton();
+    try {
+      await animateBurn(target.sides, wasLucky);
+    } finally {
+      state.rolling = false;
+      updateRollButton();
+    }
+    const msg = burned.name + ' has been reduced to ash. ' + replacement.name + ', a fresh d' + target.sides + ', joins ' + p.name + '\u2019s bag.';
+    bagSay(msg);
+    el.announcer.textContent = msg;
+    const btn = el.bagList.querySelector('[data-burn="' + target.sides + '"]');
+    if (btn) btn.focus({ preventScroll: true }); // keep the fresh die in view
+  }
+
+  function pardon(dieId) {
+    const p = player();
+    let r;
+    try {
+      r = Profiles.resurrectDie(p, dieId);
+    } catch (e) {
+      bagSay(e.message);
+      return;
+    }
+    persistProfiles();
+    renderBag();
+    renderShame('[data-pardon]');
+    updateRack();
+    bagSay(r.restored.name + ' has been pardoned and is back in the bag' +
+      (r.displaced ? '; ' + r.displaced.name + ' retires to the Hall.' : '.'));
+  }
+
+  function scatter(dieId) {
+    const p = player();
+    const g = p.graveyard.find((x) => x.id === dieId);
+    if (!g || !window.confirm('Scatter the ashes of ' + dieLabel(g) + '? Its record is deleted for good.')) return;
+    Profiles.scatterAshes(p, dieId);
+    persistProfiles();
+    renderShame('[data-scatter]');
+    bagSay(g.name + '\u2019s ashes drift away on the wind.');
+  }
+
+  function animateBurn(sides, lucky) {
+    const reduced = reducedMotion.matches;
+    el.trayPreview.innerHTML = '';
+    el.trayDice.innerHTML = '';
+    el.trayMore.hidden = true;
+    el.tray.dataset.state = 'result';
+    state.lastNotation = null; // the tray no longer shows the last roll
+    markStale();
+    const rect = el.box.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      el.box.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+    }
+    const t3d = tray3d();
+    if (t3d && t3d.burn) {
+      return t3d.burn({ sides, look: playerLook(), reduced, lucky }).catch(() => animateBurnCss(sides, reduced));
+    }
+    return animateBurnCss(sides, reduced);
+  }
+
+  function animateBurnCss(sides, reduced) {
+    clear3d();
+    el.trayDice.innerHTML = '';
+    const stage = document.createElement('div');
+    stage.className = 'burn-stage' + (reduced ? ' is-done' : '');
+    const size = Math.round(Math.max(56, Math.min(110, el.tray.getBoundingClientRect().height * 0.32)));
+    stage.style.setProperty('--size', size + 'px');
+    const pyre = document.createElement('span');
+    pyre.className = 'burn-pyre';
+    pyre.innerHTML = '<span class="scorch"></span><span class="flames"><i></i><i></i><i></i><i></i><i></i></span>';
+    if (!reduced) pyre.insertBefore(createDie(sides, 1, 'burn-doomed'), pyre.lastChild);
+    const fresh = createDie(sides, sides, 'burn-fresh');
+    stage.appendChild(pyre);
+    stage.appendChild(fresh);
+    el.trayDice.appendChild(stage);
+    if (reduced) return Promise.resolve();
+    return new Promise((resolve) => setTimeout(resolve, 3900));
+  }
+
+  function exportProfiles() {
+    const blob = new Blob([Profiles.exportJSON(profiles)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dice-box-profiles-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    bagSay('Exported ' + profiles.players.length + (profiles.players.length === 1 ? ' player.' : ' players.'));
+  }
+
+  function importProfiles(file) {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      bagSay('That file is too big to be a dice box backup.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const r = Profiles.importJSON(profiles, String(reader.result));
+        persistProfiles();
+        profilesChanged();
+        bagSay('Imported: ' + r.added + ' new, ' + r.replaced + ' updated' + (r.skipped ? ', ' + r.skipped + ' skipped (table full)' : '') + '.');
+      } catch (e) {
+        bagSay('Import failed: ' + e.message);
+      }
+    };
+    reader.onerror = () => bagSay('Couldn\u2019t read that file.');
+    reader.readAsText(file);
+  }
+
+  function initProfilesUI() {
+    if (!Profiles || !profiles) return;
+    el.playersPanel.hidden = false;
+    el.bagPanel.hidden = false;
+    el.shamePanel.hidden = false;
+    el.playerTheme.innerHTML = Object.keys(Profiles.THEMES).map((k) =>
+      '<option value="' + k + '">' + escapeHtml(Profiles.THEMES[k].label) + '</option>').join('') +
+      '<option value="custom">Custom colours</option>';
+    el.playerFinish.innerHTML = Object.keys(Profiles.FINISHES).map((k) =>
+      '<option value="' + k + '">' + escapeHtml(Profiles.FINISHES[k]) + '</option>').join('');
+    profilesChanged();
+
+    el.playerChip.addEventListener('click', () => {
+      if (profiles.players.length > 1) {
+        switchPlayer(1);
+      } else {
+        el.playersPanel.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
+        el.addPlayer.focus({ preventScroll: true });
+      }
+    });
+    el.playerList.addEventListener('change', (e) => {
+      if (e.target.name === 'player') {
+        switchPlayer(e.target.value);
+        const r = el.playerList.querySelector('input[value="' + CSS.escape(e.target.value) + '"]');
+        if (r) r.focus();
+      }
+    });
+    el.addPlayer.addEventListener('click', () => {
+      try {
+        const p = Profiles.addPlayer(profiles, '');
+        persistProfiles();
+        profilesChanged();
+        el.playerEditor.open = true;
+        el.playerName.focus();
+        el.playerName.select();
+        el.announcer.textContent = p.name + ' joined the table with a fresh bag of dice.';
+      } catch (e) {
+        bagSay(e.message);
+      }
+    });
+    el.playerForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      el.playerName.blur();
+    });
+    el.playerName.addEventListener('change', () => {
+      Profiles.renamePlayer(player(), el.playerName.value);
+      persistProfiles();
+      profilesChanged();
+    });
+    el.playerTheme.addEventListener('change', () => {
+      const v = el.playerTheme.value;
+      if (v === 'custom') Profiles.updateLook(player(), { body: el.playerBody.value, ink: el.playerInk.value });
+      else Profiles.updateLook(player(), { theme: v });
+      persistProfiles();
+      profilesChanged();
+    });
+    const colourChanged = () => {
+      Profiles.updateLook(player(), { body: el.playerBody.value, ink: el.playerInk.value });
+      persistProfiles();
+      profilesChanged();
+    };
+    el.playerBody.addEventListener('input', colourChanged);
+    el.playerInk.addEventListener('input', colourChanged);
+    el.playerFinish.addEventListener('change', () => {
+      Profiles.updateLook(player(), { finish: el.playerFinish.value });
+      persistProfiles();
+      profilesChanged();
+    });
+    el.deletePlayer.addEventListener('click', () => {
+      const p = player();
+      if (profiles.players.length <= 1) return;
+      if (!window.confirm('Remove ' + p.name + ' and all of their dice stats? This can\u2019t be undone (unless you exported a backup).')) return;
+      Profiles.removePlayer(profiles, p.id);
+      persistProfiles();
+      profilesChanged();
+      el.announcer.textContent = p.name + ' left the table.';
+      el.deletePlayer.focus();
+    });
+    el.exportProfiles.addEventListener('click', exportProfiles);
+    el.importProfiles.addEventListener('click', () => el.importFile.click());
+    el.importFile.addEventListener('change', () => {
+      importProfiles(el.importFile.files && el.importFile.files[0]);
+      el.importFile.value = '';
+    });
+
+    el.bagList.addEventListener('click', (e) => {
+      const lucky = e.target.closest('[data-lucky]');
+      if (lucky) { setLuckyDie(Number(lucky.dataset.lucky)); return; }
+      const burnBtn = e.target.closest('[data-burn]');
+      if (burnBtn && !state.rolling) openBurn(Number(burnBtn.dataset.burn));
+    });
+    el.shameList.addEventListener('click', (e) => {
+      const pb = e.target.closest('[data-pardon]');
+      if (pb) { pardon(pb.dataset.pardon); return; }
+      const sb = e.target.closest('[data-scatter]');
+      if (sb) scatter(sb.dataset.scatter);
+    });
+    el.burnDialog.addEventListener('close', () => {
+      if (el.burnDialog.returnValue === 'burn') {
+        confirmBurn(el.burnEpitaph.value);
+      } else {
+        const t = burnTarget;
+        burnTarget = null;
+        if (t) {
+          bagSay('Spared. For now.');
+          const btn = el.bagList.querySelector('[data-burn="' + t.sides + '"]');
+          if (btn) btn.focus();
+        }
+      }
+    });
+    window.addEventListener('storage', (e) => {
+      // Another tab changed the profiles: pick up the new data.
+      if (e.key !== Profiles.STORAGE_KEY || state.rolling) return;
+      const r = Profiles.parse(e.newValue);
+      if (r.status === 'ok' || r.status === 'migrated') {
+        profiles = r.data;
+        profilesChanged();
+      }
+    });
   }
 
   // ------------------------------------------------------------------- help
@@ -900,6 +1457,7 @@
 
   function onKeyDown(e) {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (el.burnDialog && el.burnDialog.open) return; // the dialog handles its own keys
     const t = e.target;
     const tag = t && t.tagName;
     const isTextField = (tag === 'INPUT' && !['radio', 'checkbox', 'button', 'submit'].includes(t.type)) ||
@@ -909,6 +1467,11 @@
       return;
     }
     const interactive = tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY' || tag === 'INPUT';
+    if ((e.key === 'p' || e.key === 'P') && profiles) {
+      e.preventDefault();
+      switchPlayer(e.shiftKey ? -1 : 1);
+      return;
+    }
 
     const digit = /^(?:Digit|Numpad)([1-7])$/.exec(e.code || '');
     if (digit) {
@@ -976,6 +1539,7 @@
   // ------------------------------------------------------------------- init
   function init() {
     restore();
+    loadProfiles();
     buildRack();
     setMode(state.mode);
     renderPresets();
@@ -983,6 +1547,7 @@
     selectionChanged();
     el.formula.value = currentNotation();
     bindEvents();
+    initProfilesUI();
     document.documentElement.classList.add('js-ready');
   }
 
