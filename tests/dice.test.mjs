@@ -1,7 +1,11 @@
 // Run with: node --test tests/   (or: npm test)
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
 import Dice from '../dice-core.js';
+
+// Node 18 has no global Web Crypto (browsers and Node 20+ do); DiceCore reads it lazily.
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
 const { DICE, randomInt, parseNotation, toNotation, rollExpression, poolToNotation, toPool,
   expressionRange, hasAdvantageTarget, formatDetail, describeRoll, DiceError } = Dice;
