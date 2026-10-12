@@ -568,7 +568,7 @@ h1 {
   place-items: center;
   background:
     radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.5), transparent 42%),
-    linear-gradient(150deg, var(--die-a), var(--die-b));
+    var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
 }
 
 .die-body::before {
@@ -1553,28 +1553,32 @@ h1 {
   background: radial-gradient(circle at 40% 35%, var(--look-ink), color-mix(in srgb, var(--look-ink) 60%, #000));
 }
 
-[data-finish="metal"] .die-body {
+:root[data-finish="metal"] .die:not(.has-look) .die-body,
+.die.has-look[data-finish="metal"] .die-body {
   background:
     linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.4) 45%, transparent 60%),
-    linear-gradient(150deg, var(--die-a), var(--die-b));
+    var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
 }
 
-[data-finish="matte"] .die-body {
-  background: linear-gradient(150deg, var(--die-a), var(--die-b));
+:root[data-finish="matte"] .die:not(.has-look) .die-body,
+.die.has-look[data-finish="matte"] .die-body {
+  background: var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
 }
 
-[data-finish="pearl"] .die-body {
+:root[data-finish="pearl"] .die:not(.has-look) .die-body,
+.die.has-look[data-finish="pearl"] .die-body {
   background:
     radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.55), transparent 45%),
     linear-gradient(200deg, rgba(160, 255, 240, 0.25), rgba(255, 170, 230, 0.25)),
-    linear-gradient(150deg, var(--die-a), var(--die-b));
+    var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
 }
 
-[data-finish="gem"] .die-body {
+:root[data-finish="gem"] .die:not(.has-look) .die-body,
+.die.has-look[data-finish="gem"] .die-body {
   opacity: 0.88;
   background:
     radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.75), transparent 30%),
-    linear-gradient(150deg, var(--die-a), var(--die-b));
+    var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
 }
 
 .player-switch {
@@ -2288,3 +2292,805 @@ h1 {
     border: 1px solid ButtonText;
   }
 }
+
+/* ------------------------------------------------------- per-die looks */
+@font-face {
+  font-family: "DiceFantasy";
+  src: url("vendor/fonts/MedievalSharp/MedievalSharp.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* A die with its own look (inline --die-a/--die-b/--die-c/--ink from script.js). */
+.die.has-look .die-body {
+  opacity: var(--die-opacity, 1);
+}
+
+.die.has-look:not(.is-crit):not(.is-fumble):not(.is-dropped):not(.is-pointed) {
+  filter:
+    drop-shadow(0 0 0.6px var(--die-edge, transparent))
+    drop-shadow(0 0 0.6px var(--die-edge, transparent))
+    drop-shadow(0 0 var(--die-glow-size, 0px) var(--die-glow, transparent))
+    drop-shadow(0 calc(var(--size) * 0.09) calc(var(--size) * 0.08) rgba(0, 0, 0, 0.6));
+}
+
+.die.has-look[data-pattern="twotone"] {
+  --pattern: linear-gradient(150deg, var(--die-a) 50%, var(--die-c) 50%);
+}
+
+.die.has-look[data-pattern="swirl"] {
+  --pattern: conic-gradient(from 40deg at 42% 46%, var(--die-a), var(--die-c), var(--die-a), var(--die-c), var(--die-a));
+}
+
+.die.has-look[data-pattern="marble"] {
+  --pattern:
+    radial-gradient(ellipse 40% 18% at 28% 34%, var(--die-c), transparent 70%),
+    radial-gradient(ellipse 30% 14% at 70% 68%, var(--die-c), transparent 70%),
+    linear-gradient(150deg, var(--die-a), color-mix(in srgb, var(--die-a) 70%, var(--die-c)));
+}
+
+.die.has-look[data-pattern="speckle"] {
+  --pattern:
+    radial-gradient(var(--die-c) 0.9px, transparent 1.4px) 0 0 / 6px 6px,
+    radial-gradient(var(--die-c) 0.7px, transparent 1.2px) 3px 3px / 7px 7px,
+    linear-gradient(150deg, var(--die-a), var(--die-b));
+}
+
+.die.has-look[data-finish="glass"] .die-body {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.8), transparent 30%),
+    linear-gradient(200deg, rgba(255, 255, 255, 0.25), transparent 50%),
+    var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
+}
+
+.die.has-look[data-finish="glitter"] .die-body {
+  background:
+    radial-gradient(rgba(255, 255, 255, 0.85) 0.6px, transparent 1px) 0 0 / 5px 5px,
+    radial-gradient(rgba(255, 240, 200, 0.6) 0.5px, transparent 1px) 2px 3px / 7px 7px,
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.45), transparent 42%),
+    var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
+}
+
+.die.has-look[data-finish="neon"] .die-face {
+  text-shadow: 0 0 4px var(--ink), 0 0 10px var(--ink);
+}
+
+.die.has-look[data-finish="wood"] .die-body {
+  background:
+    repeating-linear-gradient(100deg, rgba(0, 0, 0, 0.14) 0 2px, transparent 2px 7px),
+    var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
+}
+
+.die.has-look[data-finish="bone"] .die-body,
+.die.has-look[data-finish="stone"] .die-body {
+  background:
+    radial-gradient(rgba(0, 0, 0, 0.18) 0.6px, transparent 1px) 0 0 / 4px 4px,
+    var(--pattern, linear-gradient(150deg, var(--die-a), var(--die-b)));
+}
+
+.die.has-look .die-face.pips .pip {
+  background: radial-gradient(circle at 40% 35%, var(--ink), color-mix(in srgb, var(--ink) 60%, #000));
+}
+
+.die[data-font="sans"] .die-face {
+  font-family: var(--sans);
+  font-weight: 800;
+}
+
+.die[data-font="fantasy"] .die-face {
+  font-family: "DiceFantasy", var(--serif);
+  font-weight: 400;
+}
+
+.die[data-font="runic"] .die-face {
+  font-family: var(--mono);
+  font-weight: 700;
+  transform: skewX(-10deg);
+  letter-spacing: -0.04em;
+}
+
+.die.is-preview.is-house {
+  opacity: 0.45;
+}
+
+/* The die a result chip points at (CSS tray). */
+.die.is-pointed {
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 8px var(--gold-hi));
+  z-index: 2;
+}
+
+/* Name tags on the CSS tray */
+.tray.show-tags .die.in-tray[data-tag]::before {
+  content: attr(data-tag);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, -4px);
+  padding: 0 0.4rem;
+  border: 1px solid var(--tag-color, var(--gold));
+  border-radius: 999px;
+  background: rgba(10, 8, 7, 0.8);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* 3D tray identity overlay (tray3d.js): hover/tap tooltip and name tags */
+.tray-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tray-tag {
+  position: absolute;
+  max-width: 9.5rem;
+  overflow: hidden;
+  padding: 0 0.45rem;
+  border: 1px solid var(--tag-color, var(--gold));
+  border-radius: 999px;
+  background: rgba(10, 8, 7, 0.8);
+  color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.55;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.tray-tag.is-house {
+  border-style: dashed;
+  color: #d4d6db;
+}
+
+.tray-tag.is-dropped {
+  opacity: 0.55;
+}
+
+.tray-tip {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 15rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--tag-color, var(--gold));
+  border-radius: 10px;
+  background: rgba(10, 8, 7, 0.92);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  text-align: center;
+  transform: translate(-50%, calc(-100% - 6px));
+}
+
+.tray-tip[hidden] {
+  display: none;
+}
+
+.tray-tip-label {
+  font-weight: 700;
+  color: var(--gold-hi);
+}
+
+.tray-tip-line {
+  color: var(--text);
+}
+
+/* -------------------------------------------------- result chips per die */
+.chip.chip-die {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2.7rem;
+  padding: 0.12rem 0.45rem 0.18rem;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  background: linear-gradient(160deg, var(--chip-bg), color-mix(in srgb, var(--chip-bg) 65%, var(--chip-bg2)));
+  color: var(--chip-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  cursor: default;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.chip-val {
+  font-size: 1.02rem;
+  line-height: 1.15;
+}
+
+.chip-name {
+  max-width: 7.5rem;
+  overflow: hidden;
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+
+.chip.chip-die.house {
+  border-style: dashed;
+  border-color: #5d6068;
+  background: repeating-linear-gradient(135deg, #a3a5ac 0 6px, #94979e 6px 12px);
+  color: #16181d;
+}
+
+.chip.chip-die.max {
+  border-color: rgba(240, 212, 138, 0.9);
+}
+
+.chip.chip-die.crit {
+  border: 2px solid var(--crit);
+  box-shadow: 0 0 12px rgba(245, 197, 66, 0.6);
+}
+
+.chip.chip-die.fumble {
+  border: 2px solid var(--fumble);
+  box-shadow: 0 0 10px rgba(226, 85, 63, 0.5);
+}
+
+.chip.chip-die.dropped {
+  opacity: 0.5;
+}
+
+.chip.chip-die[data-i]:hover,
+.chip.chip-die.is-pointed,
+.chip.chip-die:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-1), 0 0 0 4px var(--gold-hi), 0 0 14px rgba(240, 212, 138, 0.5);
+  transform: translateY(-1px);
+}
+
+.chip-help {
+  margin: 0.2rem 0 0;
+}
+
+.house-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin: 0.3rem 0 0;
+  padding: 0.45rem 0.65rem;
+  border: 1px dashed #8d9097;
+  border-radius: 10px;
+  background: rgba(154, 156, 163, 0.12);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.tags-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  min-height: 32px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tags-toggle input,
+.field-check input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+/* "Rolling with …" line under the controls */
+.lineup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.7rem;
+  margin: -4px 4px 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.lineup[hidden] {
+  display: none;
+}
+
+.lineup-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lineup-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lineup-item {
+  color: var(--text);
+}
+
+.lineup-house {
+  color: #c9cbd1;
+  font-weight: 700;
+}
+
+.lineup .house-note {
+  flex-basis: 100%;
+}
+
+/* ------------------------------------------------- dice bag: typed slots */
+.bag-panel {
+  container-type: inline-size;
+}
+
+.bag {
+  gap: 12px;
+}
+
+.bag-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bag-group + .bag-group {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.bag-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+}
+
+.bag-group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.bag-group-title .bag-type {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.bag-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.bag-order {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.bag-group-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.bag-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bag-item {
+  grid-template-columns: auto auto minmax(0, 1fr);
+  row-gap: 6px;
+}
+
+.bag-item .bag-actions {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@container (min-width: 560px) {
+  .bag-item {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+  }
+
+  .bag-item .bag-actions {
+    grid-column: auto;
+  }
+}
+
+.slot-no {
+  min-width: 2.4ch;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: right;
+  color: var(--gold-hi);
+}
+
+.bag-item.is-picked {
+  border-color: rgba(109, 156, 240, 0.6);
+}
+
+.bag-item.is-lucky.is-picked {
+  border-color: rgba(184, 240, 122, 0.55);
+}
+
+.pick-badge {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border: 1px solid rgba(109, 156, 240, 0.6);
+  border-radius: 999px;
+  background: rgba(109, 156, 240, 0.16);
+  color: #c4d7ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.bag-item .icon-btn {
+  width: 38px;
+  height: 36px;
+}
+
+.bag-item .pick-btn {
+  width: auto;
+  min-width: 46px;
+  padding: 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pick-btn[aria-pressed="true"] {
+  border-color: rgba(109, 156, 240, 0.85);
+  background: rgba(109, 156, 240, 0.22);
+  color: #dfe8ff;
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+}
+
+.tomb-icon .die {
+  --size: 24px;
+  margin-right: 0.45rem;
+  vertical-align: -5px;
+}
+
+/* ------------------------------------------------------------ die editor */
+.dialog.die-dialog {
+  width: min(62rem, calc(100vw - 1.5rem));
+  max-height: calc(100vh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  overflow: auto;
+  box-shadow: var(--shadow);
+}
+
+.die-form {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1.1rem 1.2rem;
+}
+
+.die-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.die-head .muted {
+  margin-top: 0.15rem;
+}
+
+.die-close {
+  flex: none;
+  font-size: 1.6rem;
+}
+
+.die-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.die-stage {
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.die-preview-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 14px;
+  background: radial-gradient(ellipse at 50% 40%, var(--felt-hi), var(--felt-lo));
+  box-shadow: inset 0 8px 22px rgba(0, 0, 0, 0.6);
+}
+
+.die-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 14px;
+}
+
+.die-preview:active {
+  cursor: grabbing;
+}
+
+.die-preview-flat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.die-preview-flat .die {
+  --size: 64px;
+}
+
+.die-preview-wrap.is-3d .die-preview-flat {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.die-preview-wrap.is-3d .die-preview-flat .die {
+  --size: 24px;
+}
+
+.die-preview-hint {
+  margin: 0;
+}
+
+.die-preview-hint[hidden] {
+  display: none;
+}
+
+.die-warnings {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.die-warn,
+.die-ok {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.die-warn {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(245, 197, 66, 0.6);
+  border-radius: 10px;
+  background: rgba(245, 197, 66, 0.12);
+  color: #ffe9a6;
+}
+
+.die-ok {
+  color: #d9f7a6;
+}
+
+.die-controls {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.die-slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.6rem;
+  color: var(--muted);
+}
+
+.die-slot-actions,
+.die-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.die-quick-actions {
+  margin-top: 0.6rem;
+}
+
+.die-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0.55rem 0.75rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.die-fieldset legend {
+  padding: 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.die-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.6rem, 1fr));
+  gap: 6px;
+}
+
+.preset-look {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 38px;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.85rem;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.preset-look:hover {
+  border-color: var(--gold);
+}
+
+.die-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.6rem 0.8rem;
+  align-items: end;
+}
+
+.die-grid.die-colours {
+  grid-template-columns: repeat(auto-fill, minmax(6.8rem, 1fr));
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 40px;
+}
+
+.field .field-check {
+  min-height: 0;
+}
+
+.field-check label,
+.field .field-check label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.field[hidden] {
+  display: none;
+}
+
+.field input[type="range"] {
+  width: 100%;
+  min-height: 32px;
+  accent-color: var(--gold);
+}
+
+.field output {
+  margin-left: 0.25rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-hi);
+}
+
+.field input[type="color"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.die-copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.die-copy-row select {
+  flex: 1 1 12rem;
+  min-height: 40px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font: inherit;
+}
+
+.die-copy-pick[hidden] {
+  display: none;
+}
+
+.die-copy-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 2px 8px;
+  max-height: 12rem;
+  overflow: auto;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.copy-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 32px;
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .die-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .die-stage {
+    position: static;
+  }
+
+  .die-preview-wrap {
+    width: min(100%, 240px);
+    margin: 0 auto;
+  }
+
+  .dialog.die-dialog {
+    width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .die-form {
+    padding: 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip.chip-die {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .chip.chip-die {
+    forced-color-adjust: none;
+  }
+}
+
