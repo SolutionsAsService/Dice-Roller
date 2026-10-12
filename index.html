@@ -2,77 +2,162 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Dungeon Dice Roller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dungeon Dice Box – pick your dice, shake the box, and roll fair d4, d6, d8, d10, d12, d20 and d100 dice.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#120e0b">
+  <title>Dungeon Dice Box</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='32,3 58,18 58,46 32,61 6,46 6,18' fill='%23b3262f' stroke='%23f0d48a' stroke-width='3'/%3E%3Cpolygon points='32,14 49,42 15,42' fill='none' stroke='%23f0d48a' stroke-width='2'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    h2.dice-label {
-      font-family: 'Cinzel', serif;
-      font-weight: 700;
-      font-size: 1.8em;
-      color: #3e2917; /* Darker tone for dice headers */
-      margin-bottom: 10px;
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-    }
-    .dice input {
-      color: #1a1a1a; /* Ensures legibility on white inputs */
-    }
-    .results h2 {
-      font-family: 'Cinzel', serif;
-      font-size: 1.6em;
-      color: #3e2917;
-      margin-bottom: 10px;
-    }
-  </style>
+  <script src="dice-core.js" defer></script>
+  <script src="script.js" defer></script>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Dungeon Dice Roller</h1>
-      <p>Roll the fates of heroes and monsters alike!</p>
+  <a class="skip-link" href="#roll-btn">Skip to the Roll button</a>
+
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <polygon points="32,3 58,18 58,46 32,61 6,46 6,18" />
+          <polygon class="facet" points="32,14 49,42 15,42" />
+          <text x="32" y="37" text-anchor="middle">20</text>
+        </svg>
+        <div>
+          <h1>Dungeon Dice Box</h1>
+          <p class="tagline">Pick your dice, shake the box, let fate decide.</p>
+        </div>
+      </div>
+      <button type="button" id="help-toggle" class="btn btn-ghost btn-small" aria-expanded="false" aria-controls="help-panel" aria-keyshortcuts="?">
+        Shortcuts <kbd>?</kbd>
+      </button>
     </header>
 
-    <section class="dice-controls">
-      <div class="dice">
-        <h2 class="dice-label">d4</h2>
-        <input type="number" id="d4-count" value="1" min="1">
-        <button onclick="rollDice(4, 'd4')" class="roll-button">Roll d4</button>
-      </div>
-      <div class="dice">
-        <h2 class="dice-label">d6</h2>
-        <input type="number" id="d6-count" value="1" min="1">
-        <button onclick="rollDice(6, 'd6')" class="roll-button">Roll d6</button>
-      </div>
-      <div class="dice">
-        <h2 class="dice-label">d8</h2>
-        <input type="number" id="d8-count" value="1" min="1">
-        <button onclick="rollDice(8, 'd8')" class="roll-button">Roll d8</button>
-      </div>
-      <div class="dice">
-        <h2 class="dice-label">d12</h2>
-        <input type="number" id="d12-count" value="1" min="1">
-        <button onclick="rollDice(12, 'd12')" class="roll-button">Roll d12</button>
-      </div>
-      <div class="dice">
-        <h2 class="dice-label">d20</h2>
-        <input type="number" id="d20-count" value="1" min="1">
-        <button onclick="rollDice(20, 'd20')" class="roll-button">Roll d20</button>
-      </div>
+    <section id="help-panel" class="help-panel panel" aria-labelledby="help-title" hidden>
+      <h2 id="help-title" class="panel-title">Keyboard shortcuts</h2>
+      <dl class="shortcut-list">
+        <div><dt><kbd>1</kbd>–<kbd>7</kbd></dt><dd>Add d4, d6, d8, d10, d12, d20, d100</dd></div>
+        <div><dt><kbd>Shift</kbd> + <kbd>1</kbd>–<kbd>7</kbd></dt><dd>Remove that die</dd></div>
+        <div><dt><kbd>Space</kbd> / <kbd>Enter</kbd> / <kbd>R</kbd></dt><dd>Roll</dd></div>
+        <div><dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Raise / lower modifier</dd></div>
+        <div><dt><kbd>A</kbd> / <kbd>D</kbd> / <kbd>N</kbd></dt><dd>Advantage / disadvantage / normal</dd></div>
+        <div><dt><kbd>F</kbd></dt><dd>Edit the formula</dd></div>
+        <div><dt><kbd>C</kbd> / <kbd>Esc</kbd></dt><dd>Clear the dice</dd></div>
+        <div><dt><kbd>?</kbd></dt><dd>Show / hide this help</dd></div>
+      </dl>
     </section>
 
-    <section class="results">
-      <h2>Results</h2>
-      <div id="results-display"></div>
-    </section>
+    <main class="layout">
+      <section class="table" aria-labelledby="table-title">
+        <h2 id="table-title" class="visually-hidden">Dice box</h2>
 
-    <button id="reset-button" onclick="resetResults()">Reset Dice</button>
+        <div class="box" id="box">
+          <div class="tray" id="tray" data-state="empty">
+            <p class="tray-empty" id="tray-empty">Choose dice from the rack below, then roll.</p>
+            <div class="tray-preview" id="tray-preview" aria-hidden="true"></div>
+            <div class="tray-dice" id="tray-dice" aria-hidden="true"></div>
+            <p class="tray-more" id="tray-more" hidden></p>
+          </div>
+        </div>
 
-    <footer>
-      <p>May your rolls be ever in your favor!</p>
+        <div class="rack-wrap">
+          <h3 class="visually-hidden" id="rack-title">Dice rack</h3>
+          <ul class="rack" id="rack" aria-labelledby="rack-title"></ul>
+        </div>
+
+        <div class="controls">
+          <div class="control modifier-control">
+            <label class="control-label" for="mod-input">Modifier</label>
+            <div class="stepper">
+              <button type="button" class="step" id="mod-down" aria-label="Lower modifier" aria-keyshortcuts="-">−</button>
+              <input type="number" id="mod-input" inputmode="numeric" value="0" min="-999" max="999" step="1">
+              <button type="button" class="step" id="mod-up" aria-label="Raise modifier" aria-keyshortcuts="+">+</button>
+            </div>
+          </div>
+
+          <fieldset class="control segmented" id="mode-group">
+            <legend class="control-label">d20 mode</legend>
+            <div class="segments">
+              <input type="radio" name="mode" id="mode-dis" value="dis">
+              <label for="mode-dis" title="Disadvantage (D)">Disadv.</label>
+              <input type="radio" name="mode" id="mode-normal" value="normal" checked>
+              <label for="mode-normal" title="Normal (N)">Normal</label>
+              <input type="radio" name="mode" id="mode-adv" value="adv">
+              <label for="mode-adv" title="Advantage (A)">Adv.</label>
+            </div>
+          </fieldset>
+
+          <div class="roll-actions">
+            <button type="button" id="roll-btn" class="btn btn-roll" aria-keyshortcuts="Space Enter R">
+              <span class="roll-word">Roll</span>
+              <span class="roll-formula" id="roll-formula">—</span>
+            </button>
+            <button type="button" id="clear-btn" class="btn btn-ghost" aria-keyshortcuts="C">Clear</button>
+          </div>
+        </div>
+
+        <div class="result-card" id="result-card" data-state="idle">
+          <div class="result-head">
+            <span class="result-label" id="result-label">Result</span>
+            <span class="result-notation" id="result-notation"></span>
+          </div>
+          <div class="result-main">
+            <output class="total" id="total" aria-labelledby="result-label">—</output>
+            <div class="banner" id="banner" hidden></div>
+          </div>
+          <div class="breakdown" id="breakdown">
+            <p class="muted">Pick some dice and press <strong>Roll</strong>.</p>
+          </div>
+        </div>
+
+        <div id="announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+      </section>
+
+      <aside class="side">
+        <section class="panel" aria-labelledby="formula-title">
+          <h2 id="formula-title" class="panel-title">Formula</h2>
+          <form id="formula-form" class="formula-form" autocomplete="off">
+            <label for="formula" class="visually-hidden">Dice formula</label>
+            <input type="text" id="formula" class="formula-input" spellcheck="false" placeholder="e.g. 2d6+3 or 4d6kh3" aria-describedby="formula-hint" enterkeyhint="go">
+            <button type="submit" class="btn btn-small">Roll</button>
+          </form>
+          <p class="hint" id="formula-hint" aria-live="polite"></p>
+          <details class="syntax">
+            <summary>Formula syntax</summary>
+            <ul>
+              <li><code>2d6+3</code> – two d6 plus 3</li>
+              <li><code>d20</code>, <code>d%</code> – one die (d% = d100)</li>
+              <li><code>4d6kh3</code> / <code>4d6dl1</code> – keep highest 3</li>
+              <li><code>2d20kl1</code> – keep lowest 1</li>
+              <li><code>d8+3d6-1</code> – mix groups and modifiers</li>
+            </ul>
+          </details>
+        </section>
+
+        <section class="panel" aria-labelledby="presets-title">
+          <div class="panel-head">
+            <h2 id="presets-title" class="panel-title">Quick rolls</h2>
+            <button type="button" id="save-preset" class="btn btn-ghost btn-small">Save current</button>
+          </div>
+          <ul class="presets" id="preset-list"></ul>
+        </section>
+
+        <section class="panel history-panel" aria-labelledby="history-title">
+          <div class="panel-head">
+            <h2 id="history-title" class="panel-title">History</h2>
+            <button type="button" id="clear-history" class="btn btn-ghost btn-small">Clear</button>
+          </div>
+          <p class="muted" id="history-empty">No rolls yet. Your last 50 rolls are kept on this device.</p>
+          <ol class="history" id="history-list" reversed></ol>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="app-footer">
+      <p>Fair rolls from <code>crypto.getRandomValues</code> with rejection sampling. May your rolls be ever in your favor.</p>
     </footer>
   </div>
 
-  <script src="script.js"></script>
+  <noscript><p class="noscript">The dice box needs JavaScript to roll.</p></noscript>
 </body>
 </html>
